@@ -116,6 +116,36 @@
   * 想中文后面附英文原文（方便搜索报错）
     把 clangd_zh_proxy.py 里的 KEEP_ORIGINAL = False 改成 True。
 
+  * 想按项目关掉翻译（推荐，不用重启）
+    在工作区 .vscode/tasks.json（或工作目录 tasks.json）里加一项：
+        {
+            "version": "2.0.0",
+            "clang-zh": null,
+            "tasks": []
+        }
+    这一项对 VS Code 的任务没有任何影响，只是给翻译层当开关用。
+    想恢复就把 null 改成 "on"，或直接删掉这一行。
+    除了 null，写 "None" / "none" / "off" / false / 0 也表示关闭；
+    键名不区分大小写和 - _ .，写成 Clang_ZH 一样能识别。
+
+  * 想全局默认关掉
+    在用户级 tasks.json 里写同样的 "clang-zh": null：
+        Windows : %APPDATA%\Code\User\tasks.json
+        macOS   : ~/Library/Application Support/Code/User/tasks.json
+        Linux   : ~/.config/Code/User/tasks.json
+    工作区配置优先于全局，所以某个项目仍可单独用 "on" 覆盖回来。
+    放在顶层、options 里或某个 task 里都能被找到；文件支持 JSONC
+    注释和尾逗号。
+
+  * 关掉时的行为
+    代理对诊断帧完全不解析、原字节转发，和没装翻译层时一样。
+    改完 tasks.json 立刻生效，不需要 Reload Window。
+
+  * 想强制忽略 tasks.json
+    设环境变量 CLANGD_ZH=1（强制翻译）或 CLANGD_ZH=0（强制关闭），
+    优先级高于所有 tasks.json。调试时可用 CLANGD_ZH_TASKS_DIR
+    指定一个目录，让代理只读那个目录里的 tasks.json。
+
   * 想临时关掉翻译
     把 settings.json 的 clangd.path 改成真实 clangd.exe 路径，
     并把 clangd.useScriptAsExecutable 设为 false。

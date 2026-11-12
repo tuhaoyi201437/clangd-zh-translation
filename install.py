@@ -333,10 +333,14 @@ def lsp_smoke(flags, timeout=25):
             f.write(text)
         uri = pathlib.Path(src).as_uri()
 
+        # 冒烟测试只验证翻译能力,强制开启,不受用户 tasks.json 开关影响
+        smoke_env = dict(os.environ)
+        smoke_env['CLANGD_ZH'] = '1'
         proc = subprocess.Popen([PY, PROXY, '--log=error'],
                                 stdin=subprocess.PIPE,
                                 stdout=subprocess.PIPE,
-                                stderr=subprocess.DEVNULL)
+                                stderr=subprocess.DEVNULL,
+                                env=smoke_env)
         q = queue.Queue()
 
         def reader():
@@ -409,6 +413,32 @@ def lsp_smoke(flags, timeout=25):
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def verify_switch():
+    """验证 tasks.json 的 clang-zh 开关:只在临时目录造文件,不碰用户配置。"""
+    tmp = tempfile.mkdtemp(prefix='clangd_zh_switch_')
+    env = dict(os.environ)
+    env['CLANGD_ZH_TASKS_DIR'] = tmp
+    env.pop('CLANGD_ZH', None)
+    code = ("import sys; sys.path.insert(0, %r); import clangd_zh_proxy as p; "
+            "print(1 if p.translation_enabled() else 0)" % BASE)
+    results = []
+    try:
+        for content, expect, label in (
+            ('{"version":"2.0.0","clang-zh":null,"tasks":[]}', '0', 'null'),
+            ('{"version":"2.0.0","clang-zh":"on","tasks":[]}', '1', 'on'),
+        ):
+            with open(os.path.join(tmp, 'tasks.json'), 'w', encoding='utf-8') as f:
+                f.write(content)
+            r = run([PY, '-c', code], env=env)
+            results.append(((r.stdout or '').strip() == expect, label))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    ok = all(a for a, b in results)
+    say('  tasks.json 开关 : ' + ('OK  (null 关闭 / on 开启)' if ok
+                                 else 'FAIL  ' + str(results)))
+    return ok
+
+
 def verify(flags):
     ok = True
     if not PY or not os.path.isfile(PY):
@@ -428,6 +458,8 @@ def verify(flags):
     n = (r.stdout or '').strip()
     say('  翻译规则总数   : ' + (n + ' 条' if n.isdigit() else 'FAIL'))
     ok &= n.isdigit() and int(n) > 0
+
+    ok &= verify_switch()
 
     good = lsp_smoke(flags)
     say('  中文诊断端到端 : ' + ('OK' if good else 'FAIL'))

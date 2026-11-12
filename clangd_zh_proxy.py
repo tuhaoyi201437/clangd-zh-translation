@@ -22,6 +22,9 @@
 开关：
   KEEP_ORIGINAL = True            中文后附英文原文
   环境变量 CLANGD_ZH_DEBUG=1      写 proxy.log，记录命中/未命中，方便补词典
+  环境变量 CLANGD_ZH=0/1         强制关闭/开启翻译(最高优先级)
+  tasks.json 里 "clang-zh": null 关闭翻译(用户级 + 工作区,即时生效)
+  CLANGD_ZH_TASKS_DIR            手动指定 tasks.json 所在目录(调试用)
 词典：zh_codes.py(按诊断码)、zh_diagnostics.py(按文本)，均可直接编辑
 """
 import json
@@ -56,6 +59,221 @@ LOC_LINE = re.compile(r'^(.+?:\d+:\d+:)\s*(.*)$')
 TAG_LINE = re.compile(r'^(note|error|warning|remark):\s*(.*)$', re.I)
 TAG_ZH = {'note': '提示', 'error': '错误', 'warning': '警告', 'remark': '说明'}
 AKA = re.compile(r"\(aka '([^']*)'\)")
+
+# ---------------------------------------------------------------- 翻译总开关
+# 读 VS Code 的 tasks.json(用户级 + 工作区),若 clang-zh 为 None/null/Off 则整帧透传。
+# 键名对大小写与 - _ . 分隔符不敏感;支持 JSONC(注释、尾逗号)。
+# 优先级:CLANGD_ZH 环境变量 > CLANGD_ZH_TASKS_DIR 指定目录 > 工作区 .vscode >
+#         工作区根目录 > 用户级(全局)。改动即时生效,无需 Reload Window。
+SWITCH_KEY = 'clangzh'
+SWITCH_OFF = {'none', 'null', 'off', 'false', 'disabled', 'no', '0', ''}
+_SWITCH_CACHE = {'sig': None, 'ts': 0.0, 'enabled': True, 'why': ''}
+_WORKSPACE_DIRS = []
+
+
+def _norm_key(k):
+    return re.sub(r'[-_.]', '', str(k)).lower()
+
+
+def _find_switch(obj):
+    """在顶层、options、inputs、tasks[] 里找 clang-zh;返回 (值, 是否找到)。"""
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if _norm_key(k) == SWITCH_KEY:
+                return v, True
+        for sub in (obj.get('options'), obj.get('inputs'), obj.get('tasks')):
+            if sub is not None:
+                v, ok = _find_switch(sub)
+                if ok:
+                    return v, True
+    elif isinstance(obj, list):
+        for item in obj:
+            v, ok = _find_switch(item)
+            if ok:
+                return v, True
+    return None, False
+
+
+def _read_tasks(path):
+    try:
+        with open(path, encoding='utf-8-sig') as f:
+            raw = f.read()
+    except OSError:
+        return None
+    try:
+        return json.loads(raw)
+    except Exception:
+        pass
+    # JSONC:去掉 // 与 /* */ 注释、尾逗号,字符串内容原样保留
+    out, i, n, in_str, q = [], 0, len(raw), False, ''
+    while i < n:
+        c = raw[i]
+        if in_str:
+            out.append(c)
+            if c == '\\' and i + 1 < n:
+                out.append(raw[i + 1])
+                i += 2
+                continue
+            if c == q:
+                in_str = False
+            i += 1
+            continue
+        if c in ('"', "'"):
+            in_str, q = True, c
+            out.append(c)
+            i += 1
+            continue
+        if c == '/' and i + 1 < n and raw[i + 1] == '/':
+            j = raw.find('\n', i)
+            if j < 0:
+                break
+            i = j
+            continue
+        if c == '/' and i + 1 < n and raw[i + 1] == '*':
+            j = raw.find('*/', i + 2)
+            i = (j + 2) if j >= 0 else n
+            continue
+        out.append(c)
+        i += 1
+    try:
+        return json.loads(re.sub(r',\s*([}\]])', r'\1', ''.join(out)))
+    except Exception:
+        return None
+
+
+def _user_tasks_paths():
+    paths = []
+    appdata = os.environ.get('APPDATA')
+    if appdata:
+        for app in ('Code', 'Code - Insiders', 'VSCodium'):
+            paths.append(os.path.join(appdata, app, 'User', 'tasks.json'))
+    home = os.path.expanduser('~')
+    if sys.platform == 'darwin':
+        paths.append(os.path.join(home, 'Library', 'Application Support',
+                                  'Code', 'User', 'tasks.json'))
+    elif os.name == 'posix':
+        for app in ('Code', 'VSCodium', 'code-oss'):
+            paths.append(os.path.join(home, '.config', app, 'User', 'tasks.json'))
+    return paths
+
+
+def _uri_to_dir(u):
+    try:
+        from urllib.parse import urlparse, unquote
+        if isinstance(u, str) and u.startswith('file://'):
+            p = unquote(urlparse(u).path)
+            if re.match(r'^/[A-Za-z]:', p):
+                p = p[1:]
+            return os.path.normpath(p)
+        if isinstance(u, str) and os.path.isabs(u):
+            return os.path.normpath(u)
+    except Exception:
+        pass
+    return None
+
+
+def _switch_candidates():
+    """返回 [(路径, 优先级)],数字越大越优先。"""
+    out = []
+    override = os.environ.get('CLANGD_ZH_TASKS_DIR')
+    if override:
+        out += [(os.path.join(override, '.vscode', 'tasks.json'), 100),
+                (os.path.join(override, 'tasks.json'), 99)]
+    dirs = list(_WORKSPACE_DIRS)
+    try:
+        dirs.append(os.getcwd())
+    except Exception:
+        pass
+    seen = set()
+    for d in dirs:
+        if not d or d in seen:
+            continue
+        seen.add(d)
+        out += [(os.path.join(d, '.vscode', 'tasks.json'), 40),
+                (os.path.join(d, 'tasks.json'), 35)]
+    for p in _user_tasks_paths():
+        out.append((p, 10))
+    return out
+
+
+def _is_off(v):
+    if v is None:
+        return True
+    if isinstance(v, bool):
+        return not v
+    if isinstance(v, (int, float)):
+        return v == 0
+    return str(v).strip().lower() in SWITCH_OFF
+
+
+def translation_enabled():
+    """每帧调用;文件 mtime/size 变化才重读,改 tasks.json 即时生效。"""
+    force = os.environ.get('CLANGD_ZH', '').strip().lower()
+    if force in ('0', 'off', 'false', 'none', 'null', 'no', 'disabled'):
+        return False
+    if force in ('1', 'on', 'true', 'yes', 'zh'):
+        return True
+    import time
+    now = time.time()
+    c = _SWITCH_CACHE
+    sig = []
+    for p, pr in _switch_candidates():
+        try:
+            st = os.stat(p)
+            sig.append((p, pr, st.st_mtime_ns, st.st_size))
+        except OSError:
+            sig.append((p, pr, None, None))
+    if now - c['ts'] < 0.8 and sig == c['sig']:
+        return c['enabled']
+    c['ts'], c['sig'] = now, sig
+    found = []
+    for p, pr, mt, sz in sig:
+        if mt is None:
+            continue
+        data = _read_tasks(p)
+        if data is None:
+            continue
+        v, ok = _find_switch(data)
+        if ok:
+            found.append((pr, v, p))
+    if found:
+        pr, v, p = max(found, key=lambda x: x[0])
+        enabled = not _is_off(v)
+        why = '%s  clang-zh=%r  ->  %s' % (p, v, '翻译' if enabled else '不翻译')
+    else:
+        enabled, why = True, '未发现 clang-zh,默认翻译'
+    if c['why'] != why:
+        log('翻译开关：' + why)
+        c['why'] = why
+    c['enabled'] = enabled
+    return enabled
+
+
+def peek_workspace(body):
+    """只读窥探 initialize 拿工作区目录;只用于定位 tasks.json,不改写任何字节。"""
+    if b'initialize' not in body[:512]:
+        return
+    try:
+        obj = json.loads(body.decode('utf-8'))
+        if not isinstance(obj, dict) or obj.get('method') != 'initialize':
+            return
+        p = obj.get('params') or {}
+        uris = []
+        if p.get('rootUri'):
+            uris.append(p['rootUri'])
+        for f in p.get('workspaceFolders') or []:
+            if isinstance(f, dict) and f.get('uri'):
+                uris.append(f['uri'])
+        if p.get('rootPath'):
+            uris.append(p['rootPath'])
+        for u in uris:
+            d = _uri_to_dir(u)
+            if d and d not in _WORKSPACE_DIRS:
+                _WORKSPACE_DIRS.append(d)
+                log('工作区目录：' + d)
+    except Exception:
+        pass
+
 
 
 def log(msg):
@@ -250,6 +468,8 @@ def write_frame(stream, body):
 
 
 def translate_frame(body):
+    if not translation_enabled():
+        return body                   # 开关关闭:整帧原样透传,连 JSON 都不解析
     try:
         msg = json.loads(body.decode('utf-8'))
     except Exception:
@@ -289,6 +509,7 @@ def translate_frame(body):
 
 def main():
     args = sys.argv[1:]
+    log('翻译开关(启动)：%s' % ('开启' if translation_enabled() else '关闭'))
     if not os.path.isfile(CLANGD):
         print('clangd not found:', CLANGD, file=sys.stderr)
         sys.exit(1)
@@ -308,6 +529,7 @@ def main():
                 body = read_frame(sys.stdin.buffer)
                 if body is None:
                     break
+                peek_workspace(body)      # 只读窥探,不改写字节
                 write_frame(server.stdin, body)
         except Exception as e:
             log('client->server 异常：%r' % e)

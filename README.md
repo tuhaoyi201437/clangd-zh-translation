@@ -25,7 +25,7 @@
 
 于是把约束写清楚：**本地、离线、零外部依赖、可迁移到另一台电脑、未命中的诊断必须原样保留英文**。最后一条尤其重要——宁可不翻，也不能翻错而误导读者。
 
-> **获取方式**：本文配套文件是仓库根目录下的 [clangd-zh-translation.zip](./clangd-zh-translation.zip)（8 个文件、约 31 KB）。它**不含** Python 运行时，也**不含** clangd 本体，两者都用读者机器上已装好的。第 2 至 4 节给出了全部关键实现，读者也可据此自行复现，不依赖该附件。
+> **获取方式**：本文配套文件是仓库根目录下的 [clangd-zh-translation.zip](./clangd-zh-translation.zip)（8 个文件、约 35 KB）。它**不含** Python 运行时，也**不含** clangd 本体，两者都用读者机器上已装好的。第 2 至 4 节给出了全部关键实现，读者也可据此自行复现，不依赖该附件。
 
 ## 二、整体设计：在标准输入输出上做一层只改文本的转发
 
@@ -297,6 +297,24 @@ D:\gcc\lib\gcc\x86_64-w64-mingw32\10.3.0\include\c++\bits\stl_vector.h:497:7:
 
 （英文原文中的候选说明在真实输出里是单行，此处为排版做了折行；中文译文中的换行同样仅为排版。）文件路径、行号与代码符号保持原样，仍可点击定位。
 
+### 按项目临时关闭翻译
+
+需要核对英文原文（例如查官方文档、报告问题）时，不必卸载或改配置。代理会在处理每一帧前读取 VS Code 的 `tasks.json`，查找 `clang-zh` 这一项；值为 `null` 时，诊断帧**原字节透传，不做任何解析和翻译**，与没装代理时完全一致：
+
+```json
+{
+    "version": "2.0.0",
+    "clang-zh": null,
+    "tasks": []
+}
+```
+
+写 `"None"`、`"none"`、`"off"`、`"false"`、`"disabled"`、`false` 或 `0` 同样表示关闭；改成 `"on"`（或任意其它非禁用值）即恢复。键名不区分大小写，也不区分 `-`、`_`、`.` 分隔符，`Clang_ZH` 一样能识别；开关可以写在顶层、`options`、`inputs` 或某个 task 里，文件允许 JSONC 注释与尾逗号。这一项对 VS Code 的任务系统没有任何影响，只是借 `tasks.json` 这个现成的位置放开关。
+
+查找顺序（靠前的优先）：环境变量 `CLANGD_ZH` > `CLANGD_ZH_TASKS_DIR` 指定目录 > 工作区 `.vscode/tasks.json` > 工作区根目录 `tasks.json` > 用户级 `tasks.json`。用户级路径在 Windows 是 `%APPDATA%\Code\User\tasks.json`，macOS 是 `~/Library/Application Support/Code/User/tasks.json`，Linux 是 `~/.config/Code/User/tasks.json`，并同时覆盖 Code、Insiders 与 VSCodium。工作区目录从 LSP `initialize` 的 `rootUri` / `workspaceFolders` 只读获取，不改写任何字节。
+
+改完 `tasks.json` **立刻生效，不需要 `Reload Window`**：代理按文件的 mtime 与大小做缓存，每帧检查一次（0.8 s 内复用结果）。需要强制覆盖时设 `CLANGD_ZH=1`（强制翻译）或 `CLANGD_ZH=0`（强制关闭）。安装脚本的 `--test` 自检会临时强制开启翻译，因此不受读者本机开关影响。
+
 ### 回滚
 
 安装时会把原 `settings.json` 备份为 `settings.json.bak-zh-年月日-时分秒`。想彻底关闭翻译，把 `clangd.path` 改回真实 `clangd.exe` 并将 `clangd.useScriptAsExecutable` 设为 `false` 即可。想查哪些诊断没命中，设 `CLANGD_ZH_DEBUG=1`，未命中原文会写入同目录的 `proxy.log`，照着补词典最快。
@@ -305,6 +323,7 @@ D:\gcc\lib\gcc\x86_64-w64-mingw32\10.3.0\include\c++\bits\stl_vector.h:497:7:
 
 - **覆盖有限**：547 条规则，冷门诊断保留英文；clangd 升级后措辞变化可能导致个别规则失配，后果是「显示英文」而非「显示错译」。
 - **只改显示层**：不改 `severity`、`range`、诊断码与 Quick Fix，不改变编译行为，不修改源码；编译与评测仍由原来的 `g++` 完成。
+- **可随时关闭**：`tasks.json` 中 `clang-zh` 为禁用值时诊断帧原样转发；开关只影响显示文本，不改变编译、补全与跳转，也不写入任何配置。
 - **开销**：仅 `publishDiagnostics` 帧做一次 JSON 解析与序列化，其余帧原样转发；本机使用未观察到可感知延迟，但未做量化基准测试。
 - **无网络行为**：全程本地 stdio，不联网、不上传代码、不需要密钥；不修改系统 `hosts`、不写注册表、不注入其它进程，也不替换任何编译器或 clangd 的二进制文件。对 `settings.json` 的唯一写入会先备份、可回滚。
 - **扩展冲突**：微软 C/C++ 扩展的 IntelliSense 与 clangd 同时开启会重复补全，建议只留一个。
