@@ -1,0 +1,4 @@
+# 交付文件保持原始字节:Windows 批处理与说明文档必须保留 CRLF / BOM
+*.cmd -text
+*.txt -text
+*.zip -text
