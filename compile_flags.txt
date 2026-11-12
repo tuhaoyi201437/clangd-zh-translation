@@ -1,0 +1,16 @@
+--target=x86_64-w64-mingw32
+-std=c++14
+-isystem
+D:/gcc/lib/gcc/x86_64-w64-mingw32/10.3.0/include/c++
+-isystem
+D:/gcc/lib/gcc/x86_64-w64-mingw32/10.3.0/include/c++/x86_64-w64-mingw32
+-isystem
+D:/gcc/lib/gcc/x86_64-w64-mingw32/10.3.0/include/c++/backward
+-isystem
+D:/gcc/lib/gcc/x86_64-w64-mingw32/10.3.0/include
+-isystem
+D:/gcc/lib/gcc/x86_64-w64-mingw32/10.3.0/include-fixed
+-isystem
+D:/gcc/include
+-isystem
+D:/gcc/x86_64-w64-mingw32/include

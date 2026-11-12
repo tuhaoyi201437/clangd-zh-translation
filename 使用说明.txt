@@ -1,0 +1,162 @@
+﻿================================================================
+ clangd 中文报错 · 纯翻译层   使用说明
+================================================================
+
+【这是什么】
+
+把 VS Code 里 clangd 的英文报错 / 警告翻译成中文的小工具。
+它是一个 LSP 代理：夹在 VS Code 和 clangd 中间，只改诊断文字，
+补全、跳转、格式化、编译全都不受影响。全程本地离线、零联网、零密钥。
+
+本包只有 8 个文件、不到 40 KB：
+  * 不含 Python 运行时
+  * 不含 clangd 本体
+这两样都用你自己电脑上已经装好的。词典共 547 条规则
+（文本 257 + note 专用 65 + 诊断码 214 + 精确码 8 + 包装 3），
+没命中的诊断一律保留英文原文，不会乱翻。
+主句、候选提示、note 位置说明（含 relatedInformation）会一起翻译；
+文件路径、行号、代码符号保持原样，方便定位。
+
+----------------------------------------------------------------
+【一、另一台电脑需要先装好什么】
+
+  必需 1   Python 3.8 或更高
+           安装时勾选 "Add python.exe to PATH"。
+           翻译层本身是 Python 脚本，这是唯一需要额外装的东西。
+
+  必需 2   clangd
+           用那台电脑自己已装好的，本包不带。
+           没装：去 LLVM 官网装，或下载 clangd 官方独立 zip 解压即可。
+
+  必需 3   VS Code + 扩展 vscode-clangd
+           扩展 ID：llvm-vs-code-extensions.vscode-clangd
+           安装脚本会尝试自动装；装不上会给出手动命令。
+
+  建议     g++ / MinGW-w64 / TDM-GCC
+           有它才能自动拿到 C++ 标准库头文件路径，
+           否则 #include <bits/stdc++.h> 会报 "file not found"。
+           装在任意位置都行，脚本会自己找。
+
+----------------------------------------------------------------
+【二、三步用起来】
+
+  1. 把 zip 解压到任意目录
+     盘符、目录名随便（中文、空格路径都实测过可用）。
+     请整个文件夹一起移动，不要只拷单个文件。
+
+  2. 双击文件夹里的「安装.cmd」
+     它会依次做四件事：
+       [1/4] 探测本机 Python / clangd / g++
+       [2/4] 把探测到的绝对路径写进 clangd-zh.cmd 启动器，
+             并生成 compile_flags.txt
+       [3/4] 备份并更新 VS Code 的 settings.json，安装 clangd 扩展
+       [4/4] 起一次真实语言服务，验证中文诊断确实生效
+     看到「验证通过」且「中文诊断端到端 : OK」就成了。
+
+  3. 在 VS Code 里按 Ctrl+Shift+P -> Reload Window
+     * 这一步不能省：已经跑起来的代理进程不会热更新。
+
+  之后打开 .cpp 文件，报错和警告就是中文了。
+
+----------------------------------------------------------------
+【三、自动找不到时，手动指定】
+
+  打开 cmd，set 好再运行（路径换成实际的）：
+
+     set "CLANGD_PY=C:\Python313\python.exe"
+     set "CLANGD_EXE=D:\clangd\bin\clangd.exe"
+     set "CLANGD_GXX=D:\gcc\bin\g++.exe"
+     安装.cmd
+
+  三个变量分别对应 Python / clangd / g++，用哪个设哪个即可。
+  设成系统环境变量也可以，一劳永逸。
+
+----------------------------------------------------------------
+【四、常用命令与参数】
+
+  安装.cmd                   正式安装（会写配置）
+  安装.cmd --test            只探测 + 验证，不改任何配置、不装扩展
+  安装.cmd --std=c++17       默认 c++14，可改成 17 / 20
+
+  也可以直接用 Python 跑：   python install.py --test
+
+  * 换机、升级 g++、移动文件夹、换了 clangd 版本之后，
+    重新双击一次「安装.cmd」即可刷新全部路径和标准库参数。
+    （头文件路径是运行时从 g++ 问出来的，不写死版本号）
+
+----------------------------------------------------------------
+【五、文件都是干什么的】
+
+  使用说明.txt            本文件
+  安装.cmd                双击入口（纯 ASCII，避免 cmd 中文乱码）
+  install.py              安装逻辑：探测、写启动器、改配置、验证
+  clangd-zh.cmd           启动器；安装后里面写着本机 Python / clangd
+                          的绝对路径，VS Code 实际调用的就是它
+  clangd_zh_proxy.py      LSP 代理本体，只改写诊断消息
+  zh_codes.py             诊断码词典（按 clang(xxx) 里的码匹配，最稳）
+  zh_diagnostics.py       文本词典（正则兜底 + 包装规则 + note 专用规则）
+  compile_flags.txt       编译参数模板，安装时自动生成。真正生效的是
+                          settings.json 里的 clangd.fallbackFlags；
+                          这个文件供换编辑器 / 做项目级配置时复制
+
+----------------------------------------------------------------
+【六、想改、想查、想关掉】
+
+  * 遇到没翻译的报错
+    看 VS Code 诊断末尾那个 clang(xxxxx) 码，在 zh_codes.py 里加一行：
+        "-Wxxxx": "中文说明，变量 {1}"
+    或按英文句式在 zh_diagnostics.py 加：
+        (r"英文正则", r"中文 \1")
+    {1} / \1 会自动填入原消息里的 '变量名'、'类型名'。
+
+  * 想知道哪些没命中
+    设环境变量 CLANGD_ZH_DEBUG=1，未命中的原文会记到同目录
+    proxy.log，照着补最快。
+
+  * 想中文后面附英文原文（方便搜索报错）
+    把 clangd_zh_proxy.py 里的 KEEP_ORIGINAL = False 改成 True。
+
+  * 想临时关掉翻译
+    把 settings.json 的 clangd.path 改成真实 clangd.exe 路径，
+    并把 clangd.useScriptAsExecutable 设为 false。
+
+  * 想完全回滚
+    安装时会把原 settings.json 备份成
+    settings.json.bak-zh-年月日-时分秒，覆盖回去即可。
+    另外 C_Cpp.intelliSenseEngine 被设为 "disabled" 是故意的
+    （避免微软 C/C++ 扩展的补全和 clangd 打架）；想换回微软补全
+    就改回 "default"，但建议两个只留一个。
+
+  * 改过任何 .py 之后都要 Reload Window 才生效。
+  * 想只翻主句、note 保持英文：设环境变量 CLANGD_ZH_NOTES=0
+    （或在 clangd-zh.cmd 里加一行 set "CLANGD_ZH_NOTES=0"），
+    就回到旧版行为。
+
+----------------------------------------------------------------
+【七、常见问题】
+
+  Q: 还是英文？
+  A: 九成是没 Reload Window。再确认 settings.json 里
+     clangd.path 指向的是本文件夹的 clangd-zh.cmd。
+
+  Q: 提示 "Python 3 not found"？
+  A: 装 Python 3.8+ 并勾选 Add to PATH，或按【三】设 CLANGD_PY。
+
+  Q: 提示没找到 clangd.exe？
+  A: 本包确实不含 clangd，按【三】设 CLANGD_EXE，或先装好 clangd。
+
+  Q: #include <iostream> / <bits/stdc++.h> 报找不到？
+  A: 没探测到 g++。装好 MinGW-w64 / TDM-GCC 后重跑「安装.cmd」。
+
+  Q: 开了 VS Code 设置同步，新机配置不对？
+  A: 旧机器的 clangd.path 会同步过来指向不存在的路径，
+     重跑一次「安装.cmd」覆盖修正即可。
+
+  Q: 安装窗口报错一闪而过？
+  A: 脚本结尾有 pause 不会自动关；想看完整输出可在 cmd 里
+     运行「安装.cmd」或 python install.py。
+
+----------------------------------------------------------------
+一个诚实的限制：Clang 有数千条诊断，547 条覆盖的是常见错误和
+警告。遇到冷门诊断会保留英文原文 —— 这是设计如此，不会瞎翻。
+================================================================
