@@ -5,7 +5,7 @@
 用法：双击「安装.cmd」，或 python install.py
 可选参数：
   --test          只探测环境并跑验证，不写启动器、不改 VS Code 配置、不装扩展
-  --std=c++14     指定 C++ 标准（默认 c++23）
+  --std=c++14     指定 C++ 标准（默认 c++17）
 环境变量（自动探测不到时手动指定）：
   CLANGD_PY       python.exe 的完整路径
   CLANGD_EXE      clangd.exe 的完整路径
@@ -37,7 +37,7 @@ except Exception:
 EXT_ID = 'llvm-vs-code-extensions.vscode-clangd'
 PROXY = os.path.join(BASE, 'clangd_zh_proxy.py')
 LAUNCHER = os.path.join(BASE, 'clangd-zh.cmd')
-CPP_STD = '-std=c++23'
+CPP_STD = '-std=c++17'
 for _arg in sys.argv[1:]:
     if _arg.startswith('--std='):
         CPP_STD = '-std=' + _arg.split('=', 1)[1]
