@@ -1,5 +1,5 @@
 --target=x86_64-w64-mingw32
--std=c++14
+-std=c++23
 -isystem
 D:/gcc/lib/gcc/x86_64-w64-mingw32/10.3.0/include/c++
 -isystem
