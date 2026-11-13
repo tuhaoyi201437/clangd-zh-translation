@@ -238,6 +238,7 @@ RULES = [
     (r"variable '(.+?)' set but not used", r"变量 '\1' 被赋值过但从未使用"),
     (r"variable '(.+?)' is uninitialized when used here", r"变量 '\1' 未初始化就被使用"),
     (r"non-void function (?:does not|should) return a value", r"非 void 函数缺少 return 语句"),
+    (r"non-void function '(.+?)' (?:does not|should) return a value", r"非 void 函数 '\1' 应该返回一个值"),
     (r"using the result of an assignment as a condition without parentheses", r"把赋值表达式直接当条件使用，建议加括号(是否想写 '=='？)"),
     (r"comparison of integers of different signs: (.*)", r"有符号与无符号整数比较：\1"),
     (r"if statement has empty body.*", r"if 语句的语句体是空的(把分号单独放一行可消除此警告)"),

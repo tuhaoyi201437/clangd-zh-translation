@@ -202,6 +202,7 @@ CODE_RULES = {
     "-Wparentheses": "把赋值表达式直接当条件使用，建议加括号(是否想写 '=='？)",
     "-Wsign-compare": "有符号与无符号整数比较：{1} 与 {2}",
     "-Wreturn-type": "非 void 函数缺少 return 语句(没有返回值)",
+    "-Wreturn-mismatch": "非 void 函数 {1} 应该返回一个值",
     "-Wempty-body": "if / 循环语句的语句体是空的(把分号单独放一行可消除此警告)",
     "-Winfinite-recursion": "函数会无限递归调用自己",
     "-Wformat": "格式化字符串与传入的参数类型不匹配",
