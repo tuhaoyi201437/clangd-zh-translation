@@ -272,7 +272,7 @@ g++ -E -x c++ -v -
 | `clangd_zh_proxy.py` | LSP 代理本体，只改写诊断文本 |
 | `zh_codes.py` | 诊断码词典 |
 | `zh_diagnostics.py` | 文本词典、包装规则、note 专用规则 |
-| `compile_flags.txt` | 编译参数模板，供换编辑器或做项目级配置时复制；内含一份示例路径，安装时会按本机工具链覆盖生成 |
+| `compile_flags.txt` | 编译参数模板，供换编辑器或做项目级配置时复制；包内只含 `-std=c++17`，不写任何绝对路径——`-isystem` 那几行由 `install.py` 按本机工具链探测后覆盖生成 |
 | `使用说明.txt` | 面向使用者的完整说明 |
 
 ### 可复现的验证

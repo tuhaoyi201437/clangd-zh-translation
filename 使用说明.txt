@@ -100,7 +100,8 @@
   clangd_zh_proxy.py      LSP 代理本体，只改写诊断消息
   zh_codes.py             诊断码词典（按 clang(xxx) 里的码匹配，最稳）
   zh_diagnostics.py       文本词典（正则兜底 + 包装规则 + note 专用规则）
-  compile_flags.txt       编译参数模板，安装时自动生成。真正生效的是
+  compile_flags.txt       编译参数模板，安装时按本机工具链生成（包内只有
+                          -std=c++17，不含任何人的绝对路径）。真正生效的是
                           settings.json 里的 clangd.fallbackFlags；
                           这个文件供换编辑器 / 做项目级配置时复制
 
