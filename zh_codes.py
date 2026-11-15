@@ -9,6 +9,8 @@
 """
 CODE_RULES = {
     # 语法 / 期望
+    # 错误过多时的收尾提示(clangd 会停止继续报告)
+    "fatal_too_many_errors": "错误太多,已停止继续报告(先修前面的错误，后面的错误不再显示)",
     "expected": "此处需要 {1}",
     "expected_either": "此处需要 {1} 或 {2}",
     "expected_after": "{1} 之后需要 {2}",
@@ -261,6 +263,11 @@ CODE_EXACT = {
     "multiple_default_labels_defined": (
         r"multiple default labels in one switch(.*)",
         r"同一个 switch 中出现了多个 default 分支\1"),
+    # 头文件内重定义编译器内置函数(常见于 #define int long long 之类的宏污染)
+    "builtin_definition": (
+        r"definition of builtin function '(.+?)'",
+        r"定义了与编译器内置函数同名的函数 '\1'(检查 #define 宏或头文件包含顺序)"),
+
 }
 
 # ==================================================================

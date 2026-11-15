@@ -7,7 +7,7 @@
   - 按从上到下的顺序匹配，越具体的规则请放越前面
   - 没有命中的诊断一律保留英文原文，不会误伤
 
-WRAPPERS 处理 "In template: xxx" 这类前缀包装，{0} 是内层翻译结果。
+WRAPPERS 处理 "In template: xxx" / "In included file: xxx" 这类前缀包装，{0} 是内层翻译结果。
 """
 import re
 
@@ -274,6 +274,7 @@ WRAPPERS = [
     (r"In template: (.*)", "在模板实例化中：{0}"),
     (r"In instantiation of (.+)", "在实例化 {0} 时"),
     (r"While checking (.+)", "检查 {0} 时"),
+    (r"In included file: (.*)", "在包含的头文件中：{0}"),
 ]
 
 # ==================================================================
@@ -293,6 +294,8 @@ EXTRA_RULES = [
     (r"call to deleted constructor of '(.+?)'", r"调用了 '\1' 已被删除的构造函数"),
     (r"cannot jump from this goto statement to its label", r"goto 不能跳到该标签(会跳过变量初始化)"),
     (r"invalid operands to binary expression \('(.+?)' and '(.+?)'\)", r"二元运算的操作数类型不合法('\1' 和 '\2')"),
+    (r"definition of builtin function '(.+?)'",
+     r"定义了与编译器内置函数同名的函数 '\1'(检查 #define 宏或头文件包含顺序)"),
 ]
 
 NOTE_RULES = [
@@ -385,5 +388,7 @@ NOTE_RULES = [
     (r"candidate (?:function|constructor) not viable: (.*)", "候选函数/构造函数不可用：{1}"),
     (r"no matching constructor for initialization of '(.+?)'(.*)", r"没有可用于初始化 '\1' 的构造函数\2"),
     (r"see (?:also )?(.+)", r"另见 \1"),
+    (r"error occurred here", "错误发生在此处"),
+    (r"'(.+?)' is a builtin with type '(.+?)'", r"'\1' 是编译器内置函数，类型为 '\2'"),
     (r"in template: (.*)", "在模板实例化中：{1}"),
 ]

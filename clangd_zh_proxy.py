@@ -10,6 +10,7 @@
   * 诊断主句(原有能力)
   * 多行 message 里的 note 行、候选提示、note:/error:/warning: 位置标签
   * relatedInformation 里的补充说明
+  * "In included file: ..." 这类「头文件内错误」的包装前缀
   逐行翻译，未命中的行保留英文原文，绝不吞掉信息。
 
 翻译优先级：
@@ -17,7 +18,7 @@
   2. CODE_RULES   按诊断码 + 中文模板，{1} {2} 自动填英文里的 '单引号内容'
   3. NOTE_RULES   note / 候选 / 声明位置专用({N} 表示递归翻译子句)
   4. RULES        按英文整句正则(会先剥离 "(fix available)" 等尾部标注)
-  5. WRAPPERS     "In template: ..." 之类的前缀包装，递归翻译内层
+  5. WRAPPERS     "In template: ..." / "In included file: ..." 之类的前缀包装，递归翻译内层
 
 开关：
   KEEP_ORIGINAL = True            中文后附英文原文
@@ -59,6 +60,8 @@ LOC_LINE = re.compile(r'^(.+?:\d+:\d+:)\s*(.*)$')
 TAG_LINE = re.compile(r'^(note|error|warning|remark):\s*(.*)$', re.I)
 TAG_ZH = {'note': '提示', 'error': '错误', 'warning': '警告', 'remark': '说明'}
 AKA = re.compile(r"\(aka '([^']*)'\)")
+# clangd 把头文件内的错误在 #include 行重述为 "In included file: xxx"
+INCLUDED_PREFIX = re.compile(r'^In included file:\s*(.*)$', re.I | re.S)
 
 # ---------------------------------------------------------------- 翻译总开关
 # 读 VS Code 的 tasks.json(用户级 + 工作区),若 clang-zh 为 None/null/Off 则整帧透传。
@@ -325,6 +328,14 @@ def translate(text, code=None, depth=0):
         if KEEP_ORIGINAL:
             zh += '(原文：%s)' % s
         return zh
+
+    # clangd 在 #include 行重述头文件内错误时会加 "In included file: " 前缀，
+    # 先剥掉包装让内层继续走诊断码 / 文本规则，再补回中文前缀。
+    m_inc = INCLUDED_PREFIX.match(base)
+    if m_inc and depth < 2:
+        inner = (m_inc.group(1) or '').strip()
+        if inner:
+            return finish('在包含的头文件中：' + translate(inner, code, depth + 1))
 
     if code and code in CODE_EXACT:
         pat, tpl = CODE_EXACT[code]
