@@ -296,6 +296,8 @@ EXTRA_RULES = [
     (r"invalid operands to binary expression \('(.+?)' and '(.+?)'\)", r"二元运算的操作数类型不合法('\1' 和 '\2')"),
     (r"definition of builtin function '(.+?)'",
      r"定义了与编译器内置函数同名的函数 '\1'(检查 #define 宏或头文件包含顺序)"),
+    (r"invalid conversion specifier '(.+?)'",
+     r"格式字符串中有无效的转换说明符 '\1'(检查 '%' 后面是否漏写了字母或把转义写错)"),
 ]
 
 NOTE_RULES = [

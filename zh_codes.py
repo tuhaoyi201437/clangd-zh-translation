@@ -167,6 +167,7 @@ CODE_RULES = {
     "self_assignment": "变量给自己赋值",
     "unreachable": "不可达代码",
     "format": "格式字符串与参数类型不匹配(期望 {1}，实参 {2})",
+    "-Wformat-invalid-specifier": "格式字符串中有无效的转换说明符 {1}(检查 '%' 后面是否漏写了字母或把转义写错)",
     "deprecated": "{1} 已弃用",
     "multichar": "多字符字符常量(通常应使用字符串)",
     "empty_char": "空的字符常量",
