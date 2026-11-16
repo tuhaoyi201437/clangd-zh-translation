@@ -20,6 +20,11 @@ CODE_RULES = {
     "expected_semi_after_stmt": "语句后缺少分号 ';'",
     "expected_semi_after_for": "for 语句中缺少分号 ';'",
     "expected_semi_after_namespace": "命名空间定义末尾缺少分号 ';'",
+    # 构造函数初始化列表漏写 ':' 时 clang 报的就是这条
+    "expected_semi_decl_list": "声明列表末尾缺少分号 ';'",
+    # using namespace std; 但标准头文件没找到时会连带报这条
+    "ext_using_undefined_std": "using 指令引用了隐式定义的命名空间 'std'"
+                                "(通常表示没有包含对应的标准头文件)",
     "expected_expression": "此处需要一个表达式",
     "expected_statement": "此处需要一条语句",
     "expected_lparen": "此处需要左括号 '('",

@@ -59,7 +59,7 @@ RULES = [
     (r"a type specifier is required for all declarations", r"所有声明都必须写明类型"),
     (r"expected ';' after expression", r"表达式后缺少分号 ';'"),
     (r"expected ';' after statement", r"语句后缺少分号 ';'"),
-    (r"expected ';' at end of declaration", r"声明末尾缺少分号 ';'"),
+    (r"expected ';' at end of declaration(?: list)?", r"声明末尾缺少分号 ';'"),
     (r"expected expression", r"此处需要一个表达式"),
     (r"expected unqualified-id", r"此处需要一个标识符"),
     (r"expected parameter declarator", r"此处需要参数声明"),
