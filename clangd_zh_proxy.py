@@ -2,7 +2,9 @@
 """clangd 诊断中文化代理 —— 本地、离线、零联网。
 
 链路：VS Code <-> 本代理 <-> clangd.exe(优先本包 bin/，可用 CLANGD_EXE 覆盖)
-只改写 server -> client 的 textDocument/publishDiagnostics 里每条诊断的 message，
+改写 server -> client 的两类响应：
+  * textDocument/publishDiagnostics  -> 诊断 message 中文化
+  * textDocument/hover 的响应        -> 悬浮卡片里的说明文字中文化
 其余 LSP 消息按帧原样双向转发；Content-Length 按 UTF-8 字节数重算。
 任何异常都降级为透传英文原文，绝不影响 clangd 本身工作。
 
@@ -11,6 +13,8 @@
   * 多行 message 里的 note 行、候选提示、note:/error:/warning: 位置标签
   * relatedInformation 里的补充说明
   * "In included file: ..." 这类「头文件内错误」的包装前缀
+  * 悬浮提示(hover)的种类标签、类型说明、返回类型、作用域注释
+    (围栏代码块里的代码签名按源码原样保留)
   逐行翻译，未命中的行保留英文原文，绝不吞掉信息。
 
 翻译优先级：
@@ -26,6 +30,7 @@
   环境变量 CLANGD_ZH=0/1         强制关闭/开启翻译(最高优先级)
   tasks.json 里 "clang-zh": null 关闭翻译(用户级 + 工作区,即时生效)
   CLANGD_ZH_TASKS_DIR            手动指定 tasks.json 所在目录(调试用)
+悬浮提示是独立的一条链：按行翻译 Markdown，围栏代码块内只翻 // 注释行。
 词典：zh_codes.py(按诊断码)、zh_diagnostics.py(按文本)，均可直接编辑
 """
 import json
@@ -314,6 +319,159 @@ def load_rules():
 
 RULES, WRAPPERS, CODE_RULES, CODE_EXACT, NOTE_RULES = load_rules()
 
+# ---------------------------------------------------------------- 悬浮提示
+# clangd 的 hover 响应只带 id,不带 method;记录请求 id 便于精确识别。
+HOVER_IDS = set()
+
+
+def peek_hover(body):
+    """只读窥探 textDocument/hover 请求,记下 id;不改写任何字节。"""
+    if b'textDocument/hover' not in body[:1024]:
+        return
+    try:
+        obj = json.loads(body.decode('utf-8'))
+        if (isinstance(obj, dict) and obj.get('method') == 'textDocument/hover'
+                and 'id' in obj):
+            HOVER_IDS.add(str(obj['id']))
+            if len(HOVER_IDS) > 512:
+                HOVER_IDS.clear()
+    except Exception:
+        pass
+
+
+def load_hover_rules():
+    try:
+        import zh_diagnostics
+        kinds = {str(k).lower(): v for k, v in
+                 getattr(zh_diagnostics, 'HOVER_KINDS', {}).items()}
+        labels = [(re.compile(p, re.I), t)
+                  for p, t in getattr(zh_diagnostics, 'HOVER_LABELS', [])]
+        comments = [(re.compile(p, re.I), t)
+                    for p, t in getattr(zh_diagnostics, 'HOVER_COMMENTS', [])]
+        log('悬浮提示词典：种类 %d 个，说明行 %d 条，注释 %d 条'
+            % (len(kinds), len(labels), len(comments)))
+        return kinds, labels, comments
+    except Exception as e:
+        log('悬浮提示词典载入失败，降级为英文：%r' % e)
+        return {}, [], []
+
+
+HOVER_KINDS, HOVER_LABELS, HOVER_COMMENTS = load_hover_rules()
+_HOVER_KIND_KEYS = sorted(HOVER_KINDS, key=len, reverse=True)
+_HOVER_FENCE = re.compile(r'^\s*(?:`{3,}|~{3,})')
+_HOVER_TITLE = re.compile(r'^(#{1,6}\s+)(.*)$')
+_HOVER_BACKTICK_KIND = re.compile(r'^`([^`]+)`\s*(.*)$')
+
+
+def _hover_kind_title(head, rest):
+    """### function `main` / ### `function` main 两种写法都支持。"""
+    m = _HOVER_BACKTICK_KIND.match(rest)
+    if m:
+        k = m.group(1).strip().lower()
+        if k in HOVER_KINDS:
+            tail = m.group(2).strip()
+            return head + HOVER_KINDS[k] + (' ' + tail if tail else '')
+    low = rest.lower()
+    for k in _HOVER_KIND_KEYS:
+        if low.startswith(k) and (len(rest) == len(k) or rest[len(k)] in ' \t`'):
+            tail = rest[len(k):].strip()
+            return head + HOVER_KINDS[k] + (' ' + tail if tail else '')
+    return None
+
+
+def _hover_outer(line):
+    lead = line[:len(line) - len(line.lstrip())]
+    core = line.strip()
+    m = _HOVER_TITLE.match(core)
+    if m:
+        zh = _hover_kind_title(m.group(1), m.group(2).strip())
+        if zh:
+            log('hover 种类命中：%s -> %s' % (core, zh))
+            return lead + zh
+    for pat, tpl in HOVER_LABELS:
+        m = pat.fullmatch(core)
+        if m:
+            try:
+                zh = m.expand(tpl)
+            except Exception:
+                continue
+            log('hover 说明命中：%s -> %s' % (core, zh))
+            return lead + zh
+    return line
+
+
+def _hover_comment(line):
+    if not re.match(r'^\s*//', line):
+        return line                      # 代码签名按源码原样保留
+    core = line.strip()
+    for pat, tpl in HOVER_COMMENTS:
+        m = pat.fullmatch(core)
+        if m:
+            try:
+                zh = m.expand(tpl)
+            except Exception:
+                continue
+            log('hover 注释命中：%s -> %s' % (core, zh))
+            return zh
+    return line
+
+
+def translate_hover_markdown(value):
+    """逐行翻译 hover 的 Markdown;围栏代码块内只翻 // 注释行。"""
+    if not isinstance(value, str) or not value:
+        return value
+    lines = value.split('\n')
+    out, in_code = [], False
+    for line in lines:
+        if _HOVER_FENCE.match(line):
+            in_code = not in_code
+            out.append(line)
+            continue
+        out.append(_hover_comment(line) if in_code else _hover_outer(line))
+    return '\n'.join(out)
+
+
+def translate_hover_contents(contents):
+    """contents 可为 MarkupContent / 字符串 / MarkedString 数组。"""
+    if isinstance(contents, str):
+        return translate_hover_markdown(contents)
+    if isinstance(contents, dict):
+        v = contents.get('value')
+        if isinstance(v, str):
+            new = translate_hover_markdown(v)
+            if new != v:
+                d = dict(contents)
+                d['value'] = new
+                return d
+        return contents
+    if isinstance(contents, list):
+        return [translate_hover_contents(x) for x in contents]
+    return contents
+
+
+def translate_hover_frame(msg, body):
+    """只改写 hover 响应;其它响应(含补全/跳转)原样透传。"""
+    if not isinstance(msg, dict) or 'id' not in msg:
+        return body
+    result = msg.get('result')
+    if not isinstance(result, dict) or 'contents' not in result:
+        return body
+    contents = result['contents']
+    if str(msg['id']) not in HOVER_IDS:
+        # 没记到请求 id 时(如单元测试直接喂帧),用结构特征兜底
+        shape = (isinstance(contents, str)
+                 or (isinstance(contents, dict)
+                     and isinstance(contents.get('value'), str))
+                 or isinstance(contents, list))
+        if not shape:
+            return body
+    new = translate_hover_contents(contents)
+    if new == contents:
+        return body
+    result['contents'] = new
+    return json.dumps(msg, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
+
+
 
 def translate(text, code=None, depth=0):
     if not isinstance(text, str) or not text or not (RULES or CODE_RULES):
@@ -486,7 +644,7 @@ def translate_frame(body):
     except Exception:
         return body
     if not isinstance(msg, dict) or msg.get('method') != 'textDocument/publishDiagnostics':
-        return body
+        return translate_hover_frame(msg, body)
     params = msg.get('params') or {}
     diags = params.get('diagnostics')
     if not isinstance(diags, list):
@@ -541,6 +699,7 @@ def main():
                 if body is None:
                     break
                 peek_workspace(body)      # 只读窥探,不改写字节
+                peek_hover(body)          # 记录 hover 请求 id
                 write_frame(server.stdin, body)
         except Exception as e:
             log('client->server 异常：%r' % e)

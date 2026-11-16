@@ -394,3 +394,70 @@ NOTE_RULES = [
     (r"'(.+?)' is a builtin with type '(.+?)'", r"'\1' 是编译器内置函数，类型为 '\2'"),
     (r"in template: (.*)", "在模板实例化中：{1}"),
 ]
+
+
+# ---- 悬浮提示(hover)专用 -------------------------------------------------
+# clangd 的 textDocument/hover 返回 Markdown,例如:
+#   ### function `main`
+#   --- 
+#   → `int`
+#   ```cpp
+#   int main()
+#   ```
+# 这里只翻「说明性文字」,围栏代码块里的代码签名按源码原样保留。
+HOVER_KINDS = {
+    'function': '函数',
+    'variable': '变量',
+    'macro': '宏',
+    'class': '类',
+    'struct': '结构体',
+    'union': '联合体',
+    'enum': '枚举',
+    'enumerator': '枚举值',
+    'enum constant': '枚举常量',
+    'typedef': '类型别名',
+    'type alias': '类型别名',
+    'namespace': '命名空间',
+    'parameter': '形参',
+    'field': '成员变量',
+    'member': '成员',
+    'method': '成员函数',
+    'constructor': '构造函数',
+    'destructor': '析构函数',
+    'function template': '函数模板',
+    'class template': '类模板',
+    'variable template': '变量模板',
+    'alias template': '别名模板',
+    'concept': '概念',
+    'template parameter': '模板参数',
+    'local variable': '局部变量',
+    'operator': '运算符',
+    'conversion function': '转换函数',
+    'using': 'using 声明',
+}
+
+# 非代码块的说明行:按整行匹配
+HOVER_LABELS = [
+    (r"^Type:\s*(.*)$", r"类型: \1"),
+    (r"^Value:\s*(.*)$", r"值: \1"),
+    (r"^Size:\s*(.*)$", r"大小: \1"),
+    (r"^Return type:\s*(.*)$", r"返回类型: \1"),
+    (r"^→\s*(.*)$", r"返回类型: \1"),
+    (r"^Parameters:\s*(.*)$", r"形参: \1"),
+    (r"^Provided by\s+(.*)$", r"由 \1 提供"),
+    (r"^Declared in\s+(.*)$", r"声明于 \1"),
+    (r"^Defined in\s+(.*)$", r"定义于 \1"),
+    (r"^Deprecated:\s*(.*)$", r"已弃用: \1"),
+    (r"^In namespace\s+(.+?)\s*$", r"在命名空间 \1 中"),
+    (r"^In class\s+(.+?)\s*$", r"在类 \1 中"),
+    (r"^In function\s+(.+?)\s*$", r"在函数 \1 中"),
+    (r"^In\s+(.+?)\s*$", r"在 \1 中"),
+]
+
+# 代码块里 clangd 生成的作用域注释(只翻 // 注释行,代码行一律不动)
+HOVER_COMMENTS = [
+    (r"^(\s*//\s*)In namespace\s+(.+?)\s*$", r"\1在命名空间 \2 中"),
+    (r"^(\s*//\s*)In class\s+(.+?)\s*$", r"\1在类 \2 中"),
+    (r"^(\s*//\s*)In function\s+(.+?)\s*$", r"\1在函数 \2 中"),
+    (r"^(\s*//\s*)In\s+(.+?)\s*$", r"\1在 \2 中"),
+]

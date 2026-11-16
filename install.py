@@ -439,6 +439,23 @@ def verify_switch():
     return ok
 
 
+def verify_hover():
+    """不启 LSP,直接验证 hover Markdown 的翻译结果。"""
+    sample = ('### function `main`\n\n---\n→ `int`\n\n---\n'
+              '```cpp\nint main()\n```\n\n'
+              '### variable `n`\n\n---\nType: `int`\n\n---\n'
+              '```cpp\n// In main\nint n\n```')
+    code = ("import sys; sys.path.insert(0, %r); import clangd_zh_proxy as p; "
+            "print(p.translate_hover_markdown(%r))" % (BASE, sample))
+    r = run([PY, '-c', code])
+    out = r.stdout or ''
+    good = all(x in out for x in ('### 函数 `main`', '### 变量 `n`',
+                                  '返回类型: `int`', '类型: `int`',
+                                  '// 在 main 中', 'int main()', 'int n'))
+    say('  悬浮提示翻译   : ' + ('OK  (种类/类型/作用域,代码签名原样保留)'
+                                if good else 'FAIL  ' + out[:160]))
+    return good
+
 def verify(flags):
     ok = True
     if not PY or not os.path.isfile(PY):
@@ -452,7 +469,9 @@ def verify(flags):
 
     probe = ("import sys; sys.path.insert(0, %r); import clangd_zh_proxy as p; "
              "print(len(p.RULES)+len(p.CODE_RULES)+len(p.CODE_EXACT)+len(p.WRAPPERS)"
-             "+len(getattr(p,'NOTE_RULES',[])))"
+             "+len(getattr(p,'NOTE_RULES',[]))"
+             "+len(getattr(p,'HOVER_KINDS',{}))+len(getattr(p,'HOVER_LABELS',[]))"
+             "+len(getattr(p,'HOVER_COMMENTS',[])))"
              % BASE)
     r = run([PY, '-c', probe])
     n = (r.stdout or '').strip()
@@ -460,6 +479,7 @@ def verify(flags):
     ok &= n.isdigit() and int(n) > 0
 
     ok &= verify_switch()
+    ok &= verify_hover()
 
     good = lsp_smoke(flags)
     say('  中文诊断端到端 : ' + ('OK' if good else 'FAIL'))
