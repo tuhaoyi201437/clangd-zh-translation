@@ -441,6 +441,7 @@ HOVER_LABELS = [
     (r"^Type:\s*(.*)$", r"类型: \1"),
     (r"^Value:\s*(.*)$", r"值: \1"),
     (r"^Size:\s*(.*)$", r"大小: \1"),
+    (r"^Offset:\s*(.*)$", r"偏移: \1"),
     (r"^Return type:\s*(.*)$", r"返回类型: \1"),
     (r"^→\s*(.*)$", r"返回类型: \1"),
     (r"^Parameters:\s*(.*)$", r"形参: \1"),
@@ -460,4 +461,12 @@ HOVER_COMMENTS = [
     (r"^(\s*//\s*)In class\s+(.+?)\s*$", r"\1在类 \2 中"),
     (r"^(\s*//\s*)In function\s+(.+?)\s*$", r"\1在函数 \2 中"),
     (r"^(\s*//\s*)In\s+(.+?)\s*$", r"\1在 \2 中"),
+]
+
+# 字段布局里的数值单位(Offset / Size 的值)
+HOVER_UNITS = [
+    (r"alignment\s+(\d+)\s*bytes?", r"对齐 \1 字节"),
+    (r"(\d+)\s*bytes?", r"\1 字节"),
+    (r"alignment", r"对齐"),
+    (r"bytes?", r"字节"),
 ]

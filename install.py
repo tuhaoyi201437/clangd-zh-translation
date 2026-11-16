@@ -444,14 +444,18 @@ def verify_hover():
     sample = ('### function `main`\n\n---\n→ `int`\n\n---\n'
               '```cpp\nint main()\n```\n\n'
               '### variable `n`\n\n---\nType: `int`\n\n---\n'
-              '```cpp\n// In main\nint n\n```')
+              '```cpp\n// In main\nint n\n```\n\n'
+              '### field `id`\n\n---\nType: `int`\n\nOffset: 8 bytes\n\n'
+              'Size: 4 bytes, alignment 4 bytes')
     code = ("import sys; sys.path.insert(0, %r); import clangd_zh_proxy as p; "
             "print(p.translate_hover_markdown(%r))" % (BASE, sample))
     r = run([PY, '-c', code])
     out = r.stdout or ''
     good = all(x in out for x in ('### 函数 `main`', '### 变量 `n`',
                                   '返回类型: `int`', '类型: `int`',
-                                  '// 在 main 中', 'int main()', 'int n'))
+                                  '// 在 main 中', 'int main()', 'int n',
+                                  '### 成员变量 `id`', '偏移: 8 字节',
+                                  '大小: 4 字节, 对齐 4 字节'))
     say('  悬浮提示翻译   : ' + ('OK  (种类/类型/作用域,代码签名原样保留)'
                                 if good else 'FAIL  ' + out[:160]))
     return good
@@ -471,7 +475,7 @@ def verify(flags):
              "print(len(p.RULES)+len(p.CODE_RULES)+len(p.CODE_EXACT)+len(p.WRAPPERS)"
              "+len(getattr(p,'NOTE_RULES',[]))"
              "+len(getattr(p,'HOVER_KINDS',{}))+len(getattr(p,'HOVER_LABELS',[]))"
-             "+len(getattr(p,'HOVER_COMMENTS',[])))"
+             "+len(getattr(p,'HOVER_COMMENTS',[]))+len(getattr(p,'HOVER_UNITS',[])))"
              % BASE)
     r = run([PY, '-c', probe])
     n = (r.stdout or '').strip()

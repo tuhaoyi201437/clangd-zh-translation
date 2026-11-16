@@ -348,15 +348,17 @@ def load_hover_rules():
                   for p, t in getattr(zh_diagnostics, 'HOVER_LABELS', [])]
         comments = [(re.compile(p, re.I), t)
                     for p, t in getattr(zh_diagnostics, 'HOVER_COMMENTS', [])]
-        log('悬浮提示词典：种类 %d 个，说明行 %d 条，注释 %d 条'
-            % (len(kinds), len(labels), len(comments)))
-        return kinds, labels, comments
+        units = [(re.compile(p, re.I), t)
+                 for p, t in getattr(zh_diagnostics, 'HOVER_UNITS', [])]
+        log('悬浮提示词典：种类 %d 个，说明行 %d 条，注释 %d 条，单位 %d 条'
+            % (len(kinds), len(labels), len(comments), len(units)))
+        return kinds, labels, comments, units
     except Exception as e:
         log('悬浮提示词典载入失败，降级为英文：%r' % e)
-        return {}, [], []
+        return {}, [], [], []
 
 
-HOVER_KINDS, HOVER_LABELS, HOVER_COMMENTS = load_hover_rules()
+HOVER_KINDS, HOVER_LABELS, HOVER_COMMENTS, HOVER_UNITS = load_hover_rules()
 _HOVER_KIND_KEYS = sorted(HOVER_KINDS, key=len, reverse=True)
 _HOVER_FENCE = re.compile(r'^\s*(?:`{3,}|~{3,})')
 _HOVER_TITLE = re.compile(r'^(#{1,6}\s+)(.*)$')
@@ -379,6 +381,13 @@ def _hover_kind_title(head, rest):
     return None
 
 
+def _apply_hover_units(text):
+    """把 Size / Offset 值里的 bytes、alignment 换成中文单位。"""
+    for pat, tpl in HOVER_UNITS:
+        text = pat.sub(tpl, text)
+    return text
+
+
 def _hover_outer(line):
     lead = line[:len(line) - len(line.lstrip())]
     core = line.strip()
@@ -395,6 +404,7 @@ def _hover_outer(line):
                 zh = m.expand(tpl)
             except Exception:
                 continue
+            zh = _apply_hover_units(zh)
             log('hover 说明命中：%s -> %s' % (core, zh))
             return lead + zh
     return line
