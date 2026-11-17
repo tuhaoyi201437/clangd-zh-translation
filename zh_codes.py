@@ -102,7 +102,7 @@ CODE_RULES = {
     "sizeof_incomplete_type": "不能对不完整类型 {1} 使用 sizeof",
     "lvalue_reference_bind_to_temporary": "非 const 左值引用 {1} 不能绑定到临时对象 {2}",
     "reference_bind_failed": "无法把 {2} 绑定到 {1} 类型的引用",
-    "init_list_bin_op": "初始化列表不能用于二元运算",
+    "init_list_bin_op": "初始化列表不能出现在二元运算符的右侧(宏展开后往往少了括号)",
     "invalid_use_of_incomplete_type": "不能对不完整类型 {1} 做此操作",
 
     # 函数 / 重载
@@ -275,6 +275,14 @@ CODE_EXACT = {
     "builtin_definition": (
         r"definition of builtin function '(.+?)'",
         r"定义了与编译器内置函数同名的函数 '\1'(检查 #define 宏或头文件包含顺序)"),
+    # 初始化列表出现在二元运算符右侧(宏展开常见)，保留具体运算符名
+    "init_list_bin_op": (
+        r"initializer list cannot be used on the right hand side of operator '(.+?)'",
+        r"初始化列表不能出现在运算符 '\1' 的右侧(宏展开后往往少了括号)"),
+    # 位域宽度超过类型能表示的范围(clang 的 -Wbitfield-width)
+    "bitfield_width_exceeds_type_width": (
+        r"width of bit-field '(.+?)' \((\d+) bits?\) exceeds the size of its type \((\d+) bits?\)",
+        r"位域 '\1' 的宽度(\2 位)超过了其类型能表示的宽度(\3 位)"),
 
 }
 
@@ -292,5 +300,6 @@ EXTRA_CODE_RULES = {
     "-Wliteral-conversion": "从 {1} 到 {2} 的隐式转换改变了数值",
     "-Wswitch": "switch 语句没有处理所有枚举值({1} 未处理)",
     "unused-includes": "包含的头文件 {1} 未被直接使用",
+    "-Wbitfield-width": "位域 {1} 的宽度超过了其类型能表示的宽度",
     "access_ctor_derived": "基类构造函数受保护，不能在派生类外调用",
 }

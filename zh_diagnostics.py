@@ -300,6 +300,11 @@ EXTRA_RULES = [
      r"定义了与编译器内置函数同名的函数 '\1'(检查 #define 宏或头文件包含顺序)"),
     (r"invalid conversion specifier '(.+?)'",
      r"格式字符串中有无效的转换说明符 '\1'(检查 '%' 后面是否漏写了字母或把转义写错)"),
+    (r"width of bit-field '(.+?)' \((\d+) bits?\) exceeds the size of its type \((\d+) bits?\)",
+     r"位域 '\1' 的宽度(\2 位)超过了其类型能表示的宽度(\3 位)"),
+    (r"width of bit-field '(.+?)' exceeds its type", r"位域 '\1' 的宽度超过了其类型能表示的宽度"),
+    (r"initializer list cannot be used on the right hand side of operator '(.+?)'",
+     r"初始化列表不能出现在运算符 '\1' 的右侧(宏展开后往往少了括号)"),
 ]
 
 NOTE_RULES = [
@@ -317,9 +322,32 @@ NOTE_RULES = [
     (r"candidate function not viable", "候选函数不可用"),
     (r"candidate constructor not viable", "候选构造函数不可用"),
     (r"candidate template ignored: (.*)", "候选模板被忽略：{1}"),
+    (r"could not match '(.+?)' against '(.+?)'", r"无法把 '\1' 与 '\2' 匹配"),
+    (r"couldn't infer template argument '(.+?)'", r"无法推导模板实参 '\1'"),
+    (r"substitution failure", "模板实参替换失败(某个模板参数类型不成立)"),
     (r"candidate (?:function|constructor) has been explicitly deleted", "候选函数或构造函数已被显式删除(= delete)"),
     (r"candidate (?:function|constructor) template ignored: (.*)", "候选函数模板被忽略：{1}"),
     (r"candidate (?:function|constructor) inherited from '(.+?)' not viable: (.*)", r"继承自 '\1' 的候选函数不可用：{2}"),
+    # 候选带模板实参推导结果时写法是 "candidate function [with Args = <>] not viable: ..."
+    (r"candidate function(?: template)? \[with [^\]]*\] not viable: (.*)",
+     "候选函数(模板实参已推导)不可用：{1}"),
+    (r"candidate constructor(?: template)? \[with [^\]]*\] not viable: (.*)",
+     "候选构造函数(模板实参已推导)不可用：{1}"),
+    (r"candidate (?:function|constructor|template)(?: template)? \[with [^\]]*\] not viable: (.*)",
+     "候选函数/构造函数不可用：{1}"),
+    # 候选不可用的原因：实参个数
+    (r"requires (?:a )?single argument '(.+?)', but (\d+) arguments? (?:was|were) provided",
+     r"需要 1 个实参 '\1'，但提供了 \2 个"),
+    (r"requires single argument '(.+?)'", r"只接受 1 个实参 '\1'"),
+    (r"requires at least (\d+) arguments?, but (\d+) (?:was|were) provided",
+     r"至少需要 \1 个实参，但只提供了 \2 个"),
+    (r"requires (\d+) arguments?, but none were provided", r"需要 \1 个实参，但一个都没提供"),
+    (r"provides no argument", "没有提供实参"),
+    # 候选不可用的原因：cv 限定符丢失(volatile 对象拷贝构造的经典场景)
+    (r"(\d+)(?:st|nd|rd|th) argument \('(.+?)'\) would lose volatile qualifier",
+     r"第 \1 个实参 ('\2') 会丢失 volatile 限定符"),
+    (r"(\d+)(?:st|nd|rd|th) argument \('(.+?)'\) would lose const qualifier",
+     r"第 \1 个实参 ('\2') 会丢失 const 限定符"),
 
     # ---- 候选不可用的「原因」子句(被上面 {N} 递归调用)----
     (r"no known conversion from '(.+?)' to '(.+?)' \(aka '([^']*)'\) for (\d+)(?:st|nd|rd|th) argument",
