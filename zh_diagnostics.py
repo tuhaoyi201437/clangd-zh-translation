@@ -60,6 +60,8 @@ RULES = [
     (r"expected ';' after expression", r"表达式后缺少分号 ';'"),
     (r"expected ';' after statement", r"语句后缺少分号 ';'"),
     (r"expected ';' at end of declaration(?: list)?", r"声明末尾缺少分号 ';'"),
+    (r"expected body of lambda expression",
+     "此处缺少 lambda 表达式的函数体(要写成 { 语句 } 的形式)"),
     (r"expected expression", r"此处需要一个表达式"),
     (r"expected unqualified-id", r"此处需要一个标识符"),
     (r"expected parameter declarator", r"此处需要参数声明"),

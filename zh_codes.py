@@ -26,6 +26,8 @@ CODE_RULES = {
     "ext_using_undefined_std": "using 指令引用了隐式定义的命名空间 'std'"
                                 "(通常表示没有包含对应的标准头文件)",
     "expected_expression": "此处需要一个表达式",
+    # lambda 少写函数体,例如 [](int a) a + 1
+    "expected_lambda_body": "此处缺少 lambda 表达式的函数体(要写成 { 语句 } 的形式)",
     "expected_statement": "此处需要一条语句",
     "expected_lparen": "此处需要左括号 '('",
     "expected_rparen": "缺少右括号 ')'",
