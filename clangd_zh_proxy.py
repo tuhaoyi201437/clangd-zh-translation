@@ -65,6 +65,8 @@ LOC_LINE = re.compile(r'^(.+?:\d+:\d+:)\s*(.*)$')
 TAG_LINE = re.compile(r'^(note|error|warning|remark):\s*(.*)$', re.I)
 TAG_ZH = {'note': '提示', 'error': '错误', 'warning': '警告', 'remark': '说明'}
 AKA = re.compile(r"\(aka '([^']*)'\)")
+# 句尾的 (aka 'xxx') 会挡住 fullmatch，先剥下来，翻完内层再补成 (即 'xxx')
+AKA_TRAIL = re.compile(r"\s*\(aka '([^']*)'\)\s*$", re.I)
 # clangd 把头文件内的错误在 #include 行重述为 "In included file: xxx"
 INCLUDED_PREFIX = re.compile(r'^In included file:\s*(.*)$', re.I | re.S)
 
@@ -497,6 +499,13 @@ def translate(text, code=None, depth=0):
             zh += '(原文：%s)' % s
         return zh
 
+    m_aka = AKA_TRAIL.search(base)
+    if m_aka and depth < 3:
+        inner = base[:m_aka.start()].rstrip()
+        if inner:
+            return finish(translate(inner, code, depth + 1)
+                          + " (即 '%s')" % m_aka.group(1))
+
     # clangd 在 #include 行重述头文件内错误时会加 "In included file: " 前缀，
     # 先剥掉包装让内层继续走诊断码 / 文本规则，再补回中文前缀。
     m_inc = INCLUDED_PREFIX.match(base)
@@ -558,6 +567,13 @@ def translate_note(s, depth=0):
     """
     if not isinstance(s, str) or not s:
         return s
+    m_aka = AKA_TRAIL.search(s.strip())
+    if m_aka and depth < 3:
+        inner = s.strip()[:m_aka.start()].rstrip()
+        if inner:
+            zh = translate_note(inner, depth + 1)
+            if zh != inner:
+                return zh + " (即 '%s')" % m_aka.group(1)
     for pat, tpl in NOTE_RULES:
         m = pat.fullmatch(s.strip())
         if not m:

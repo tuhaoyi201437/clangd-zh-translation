@@ -292,6 +292,35 @@ WRAPPERS = [
 #                 用来处理 "candidate ... not viable: <原因>" 这种嵌套句。
 # ==================================================================
 EXTRA_RULES = [
+    # ---- 2026-11-17 第四批：delete 函数 / const 成员 / 位域取址 / lambda 捕获 ----
+    (r"call to implicitly-deleted copy constructor of '(.+?)'",
+     r"调用了被隐式删除的拷贝构造函数('\1')(检查成员里是否有不可拷贝的类型)"),
+    (r"call to implicitly-deleted move constructor of '(.+?)'",
+     r"调用了被隐式删除的移动构造函数('\1')"),
+    (r"call to implicitly-deleted default constructor of '(.+?)'",
+     r"调用了被隐式删除的默认构造函数('\1')"),
+    (r"call to implicitly-deleted copy assignment operator of '(.+?)'",
+     r"调用了被隐式删除的拷贝赋值运算符('\1')"),
+    (r"call to implicitly-deleted move assignment operator of '(.+?)'",
+     r"调用了被隐式删除的移动赋值运算符('\1')"),
+    (r"'this' argument to member function '(.+?)' has type '(.+?)', but (?:the )?function is not marked const",
+     r"成员函数 '\1' 的 'this' 实参类型是 '\2'，但这个函数没有标记为 const(不能通过 const 对象调用)"),
+    (r"constexpr function never produces a constant expression",
+     "constexpr 函数永远无法产生常量表达式(函数体里读了只有运行期才知道的值)"),
+    (r"function cannot return array type '(.+?)'",
+     r"函数不能返回数组类型 '\1'(C++ 不允许直接返回数组，应返回指针或 std::array)"),
+    (r"only virtual member functions can be marked 'override'",
+     "只有虚函数才能标记为 'override'(基类里没有对应的虚函数)"),
+    (r"cannot assign to non-static data member '(.+?)' within const member function '(.+?)'",
+     r"在 const 成员函数 '\2' 中不能给非静态数据成员 '\1' 赋值"),
+    (r"cannot assign to non-static data member within const member function '(.+?)'",
+     r"在 const 成员函数 '\1' 中不能给非静态数据成员赋值(const 函数里 this 是 const 指针)"),
+    (r"variable-sized object may not be initialized",
+     "变长对象不能用初始化列表初始化(长度不是编译期常量时只能逐个赋值)"),
+    (r"address of bit-field requested",
+     "不能对位域取地址(位域不是独立的内存单元，没有自己的地址)"),
+    (r"cannot assign to a variable captured by copy in a non-mutable lambda",
+     "不能给按值捕获的变量赋值(这个 lambda 没有标记为 mutable)"),
     (r"invalid application of '(.+?)' to an incomplete type '(.+?)'", r"不能对不完整类型 '\2' 使用 \1(类型只有前置声明)"),
     (r"invalid application of 'sizeof' to an incomplete type (.*)", r"不能对不完整类型 \1 使用 sizeof"),
     (r"calling a (private|protected) constructor of class '(.+?)'", r"调用了类 '\2' 的 \1(私有/受保护)构造函数，不能从外部构造对象"),
@@ -345,6 +374,9 @@ EXTRA_RULES = [
 ]
 
 NOTE_RULES = [
+    (r"in call to '(.+?)'", r"在调用 '\1' 时"),
+    (r"member function '(.+?)' is declared const here",
+     r"成员函数 '\1' 在此处被声明为 const"),
     # ---- 候选函数 / 构造函数不可用：原因用 {N} 递归翻译 ----
     (r"candidate constructor \(the implicit copy constructor\) not viable: (.*)",
      "候选构造函数(隐式拷贝构造函数)不可用：{1}"),
@@ -439,6 +471,10 @@ NOTE_RULES = [
     (r"'([^']+)' has been explicitly marked deleted here", r"'\1' 在此处被显式标记为 deleted(已删除)"),
     (r"'([^']+)' has been explicitly marked deprecated here", r"'\1' 在此处被显式标记为 deprecated(已弃用)"),
     (r"function '(.+?)' has been explicitly marked (deleted|deprecated) here", r"函数 '\1' 在此处被显式标记为 \2"),
+    (r"(copy|move) constructor of '(.+?)' is implicitly deleted because field '(.+?)' has a deleted copy constructor",
+     r"'\2' 的 \1 构造函数被隐式删除(成员 '\3' 的拷贝构造也已被删除)"),
+    (r"(copy|move) (?:constructor|assignment operator) of '(.+?)' is implicitly deleted because field '(.+?)' has a deleted copy assignment operator",
+     r"'\2' 的 \1 构造函数/赋值运算符被隐式删除(成员 '\3' 的拷贝赋值也已被删除)"),
     (r"(copy|move) (?:constructor|assignment operator) of '(.+?)' is implicitly deleted(.*)",
      r"'\2' 的 \1 构造函数/赋值运算符被隐式删除\3"),
 
