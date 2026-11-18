@@ -540,6 +540,7 @@ HOVER_KINDS = {
     'enum constant': '枚举常量',
     'typedef': '类型别名',
     'type alias': '类型别名',
+    'type-alias': '类型别名',
     'namespace': '命名空间',
     'parameter': '形参',
     'field': '成员变量',
@@ -557,10 +558,26 @@ HOVER_KINDS = {
     'operator': '运算符',
     'conversion function': '转换函数',
     'using': 'using 声明',
+    # 字面量 / 表达式(悬浮在 1、'x'、"abc"、true 这类记号上时)
+    'literal': '字面量',
+    'string-literal': '字符串字面量',
+    'character-literal': '字符字面量',
+    'integer-literal': '整数字面量',
+    'floating-literal': '浮点字面量',
+    'boolean-literal': '布尔字面量',
+    'expression': '表达式',
 }
 
 # 非代码块的说明行:按整行匹配
 HOVER_LABELS = [
+    # 调用点上的传参方式提示(clangd 12+ 新增,附在字面量/变量悬浮里)
+    (r"^Passed by const reference as (.+)$", r"以常量引用传递给形参 \1"),
+    (r"^Passed by rvalue reference as (.+)$", r"以右值引用传递给形参 \1"),
+    (r"^Passed by reference as (.+)$", r"以引用传递给形参 \1"),
+    (r"^Passed by value$", r"按值传递"),
+    (r"^Passed as (.+)$", r"按值传递给形参 \1"),
+    (r"^Parameters:$", r"形参:"),
+    (r"^Value\s*=\s*(.+)$", r"值 = \1"),
     (r"^Type:\s*(.*)$", r"类型: \1"),
     (r"^Value:\s*(.*)$", r"值: \1"),
     (r"^Size:\s*(.*)$", r"大小: \1"),

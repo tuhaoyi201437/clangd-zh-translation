@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """clangd 诊断中文化代理 —— 本地、离线、零联网。
 
-链路：VS Code <-> 本代理 <-> clangd.exe(优先本包 bin/，可用 CLANGD_EXE 覆盖)
+链路：VS Code <-> 本代理 <-> C:\\clangd\\bin\\clangd.exe
 改写 server -> client 的两类响应：
   * textDocument/publishDiagnostics  -> 诊断 message 中文化
   * textDocument/hover 的响应        -> 悬浮卡片里的说明文字中文化
@@ -36,23 +36,12 @@
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 import threading
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-if BASE not in sys.path:
-    sys.path.insert(0, BASE)  # 嵌入式 Python 里也能 import 同目录词典
-
-# 优先用本包自带的 clangd；也允许 CLANGD_EXE 指向机器上已有的 clangd
-_env_clangd = os.environ.get('CLANGD_EXE')
-CLANGD = next(
-    (p for p in (_env_clangd,
-                 os.path.join(BASE, 'bin', 'clangd.exe'),
-                 shutil.which('clangd'))
-     if p and os.path.isfile(p)),
-    os.path.join(BASE, 'bin', 'clangd.exe'))
+CLANGD = os.path.join(BASE, 'bin', 'clangd.exe')
 KEEP_ORIGINAL = False
 # 设环境变量 CLANGD_ZH_NOTES=0 可回到旧行为：只翻主句，note 保留英文
 TRANSLATE_NOTES = os.environ.get('CLANGD_ZH_NOTES', '1') != '0'
@@ -365,6 +354,8 @@ _HOVER_KIND_KEYS = sorted(HOVER_KINDS, key=len, reverse=True)
 _HOVER_FENCE = re.compile(r'^\s*(?:`{3,}|~{3,})')
 _HOVER_TITLE = re.compile(r'^(#{1,6}\s+)(.*)$')
 _HOVER_BACKTICK_KIND = re.compile(r'^`([^`]+)`\s*(.*)$')
+_HOVER_SIG_CHARS = set('{}();=')
+_HOVER_PLAIN_NAME = re.compile(r'^[\w:~<>,*& ]+$')
 
 
 def _hover_kind_title(head, rest):
@@ -390,15 +381,43 @@ def _apply_hover_units(text):
     return text
 
 
+def _hover_plain_title(core):
+    """plaintext 悬浮的第一行没有 '### ' 前缀,直接是种类名(如 literal / type-alias MyInt)。
+
+    只认「种类名」或「种类名 + 标识符」,碰到 {}();= 就认为是代码签名,原样保留。
+    """
+    if not core or any(c in _HOVER_SIG_CHARS for c in core):
+        return None
+    low = core.lower()
+    if low in HOVER_KINDS:
+        return HOVER_KINDS[low]
+    for k in _HOVER_KIND_KEYS:
+        if (len(core) > len(k) and low.startswith(k) and core[len(k)] == ' '):
+            name = core[len(k) + 1:].strip()
+            if name and _HOVER_PLAIN_NAME.match(name):
+                return HOVER_KINDS[k] + ' ' + name
+    return None
+
+
 def _hover_outer(line):
     lead = line[:len(line) - len(line.lstrip())]
     core = line.strip()
+    if core.startswith('//'):            # plaintext 悬浮里的 // In main 注释行
+        zh = _hover_comment(core)
+        if zh != core:
+            log('hover 注释命中(plaintext)：%s -> %s' % (core, zh))
+            return lead + zh
+        return line
     m = _HOVER_TITLE.match(core)
     if m:
         zh = _hover_kind_title(m.group(1), m.group(2).strip())
         if zh:
             log('hover 种类命中：%s -> %s' % (core, zh))
             return lead + zh
+    zh = _hover_plain_title(core)
+    if zh:
+        log('hover 种类命中(plaintext)：%s -> %s' % (core, zh))
+        return lead + zh
     for pat, tpl in HOVER_LABELS:
         m = pat.fullmatch(core)
         if m:
@@ -705,9 +724,6 @@ def translate_frame(body):
 def main():
     args = sys.argv[1:]
     log('翻译开关(启动)：%s' % ('开启' if translation_enabled() else '关闭'))
-    if not os.path.isfile(CLANGD):
-        print('clangd not found:', CLANGD, file=sys.stderr)
-        sys.exit(1)
     if any(a in ('--version', '-version') for a in args):
         sys.exit(subprocess.call([CLANGD] + args))
     try:
