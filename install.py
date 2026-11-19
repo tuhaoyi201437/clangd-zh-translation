@@ -6,10 +6,14 @@
 可选参数：
   --test          只探测环境并跑验证，不写启动器、不改 VS Code 配置、不装扩展
   --std=c++14     指定 C++ 标准（默认 c++17）
-环境变量（自动探测不到时手动指定）：
+环境变量（手动指定，优先级高于自动探测）：
   CLANGD_PY       python.exe 的完整路径
-  CLANGD_EXE      clangd.exe 的完整路径
+  CLANGD_EXE      clangd.exe 的完整路径（设置后跳过目录探测）
   CLANGD_GXX      g++.exe 的完整路径
+
+解压位置要求：本文件夹要放进 clangd 目录里（与 bin、lib 同级），
+例如 C:\\clangd\\clangd-zh-portable\\。clangd.exe 只在包自身目录及其
+上一级里找，不查 PATH、不查 Program Files、不扫其他盘符。
 """
 import glob
 import json
@@ -43,6 +47,7 @@ for _arg in sys.argv[1:]:
         CPP_STD = '-std=' + _arg.split('=', 1)[1]
 TEST_ONLY = '--test' in sys.argv
 PY = ''
+CLANGD_PROBED = []   # 查找 clangd.exe 时实际尝试过的路径，失败时原样打印
 
 
 def say(msg=''):
@@ -91,21 +96,30 @@ def find_python():
 
 
 def find_clangd():
+    """只在包自身所在目录范围内查找 clangd.exe。
+
+    刻意不做全盘探测：不查 PATH、不查 Program Files\\LLVM、不扫其他盘符，
+    避免机器上有多份 clangd 时悄悄用错。命中顺序只有下面 4 条：
+
+        <包目录>\\clangd.exe
+        <包目录>\\bin\\clangd.exe
+        <包目录>\\..\\clangd.exe          clangd 目录下（包放进去后）
+        <包目录>\\..\\bin\\clangd.exe     推荐布局 C:\\clangd\\clangd-zh-portable\\
+
+    环境变量 CLANGD_EXE 属于人工指定，优先级最高，直接跳过上述探测。
+    """
     env = os.environ.get('CLANGD_EXE')
     if env and os.path.isfile(env):
         return os.path.abspath(env)
-    p = shutil.which('clangd')
-    if p and os.path.isfile(p):
-        return os.path.abspath(p)
-    cands = ['C:/Program Files/LLVM/bin/clangd.exe',
-             'C:/Program Files (x86)/LLVM/bin/clangd.exe']
-    la = os.environ.get('LOCALAPPDATA', '')
-    if la:
-        cands.append(os.path.join(la, 'Programs', 'LLVM', 'bin', 'clangd.exe'))
-    for d in 'CDEFGHIJ':
-        for rel in ('clangd/bin/clangd.exe', 'LLVM/bin/clangd.exe',
-                    'tools/clangd/bin/clangd.exe', 'dev/clangd/bin/clangd.exe'):
-            cands.append(os.path.join(d + ':/', rel))
+    parent = os.path.dirname(BASE)
+    cands = [
+        os.path.join(BASE, 'clangd.exe'),
+        os.path.join(BASE, 'bin', 'clangd.exe'),
+        os.path.join(parent, 'clangd.exe'),
+        os.path.join(parent, 'bin', 'clangd.exe'),
+    ]
+    del CLANGD_PROBED[:]
+    CLANGD_PROBED.extend(pos(p) for p in cands)
     for p in cands:
         if os.path.isfile(p):
             return os.path.abspath(p)
@@ -512,7 +526,13 @@ def main():
 
     clangd = find_clangd()
     if not clangd:
-        say('  ! 没找到 clangd.exe。本包不含 clangd，请先在新机装好 clangd，')
+        say('  ! 没找到 clangd.exe。本包不含 clangd，且只在下列 4 处查找，')
+        say('    不查 PATH、不查 Program Files、不扫其他盘：')
+        for p in CLANGD_PROBED:
+            say('      ' + p)
+        say('    请把解压出的整个文件夹放进 clangd 目录（与 bin、lib 同级）：')
+        say('      C:\\clangd\\bin\\clangd.exe')
+        say('      C:\\clangd\\clangd-zh-portable\\安装.cmd')
         say('    或设置环境变量 CLANGD_EXE 指向 clangd.exe 后重跑本脚本。')
         return 1
     say('  clangd : ' + clangd)

@@ -41,7 +41,30 @@ import sys
 import threading
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-CLANGD = os.path.join(BASE, 'bin', 'clangd.exe')
+
+
+def _find_clangd_bin():
+    """定位 clangd 本体。只认包自身目录范围，不查 PATH、不扫其他盘。
+
+    优先级：CLANGD_EXE 环境变量（人工指定/启动器写入）> 本包目录 >
+    上一级目录。最后两条是给「包放进 clangd 目录里」的部署方式用的：
+        <clangd>\\bin\\clangd.exe
+        <clangd>\\clangd-zh-portable\\clangd_zh_proxy.py
+    """
+    env = os.environ.get('CLANGD_EXE')
+    if env and os.path.isfile(env):
+        return os.path.abspath(env)
+    parent = os.path.dirname(BASE)
+    for p in (os.path.join(BASE, 'clangd.exe'),
+              os.path.join(BASE, 'bin', 'clangd.exe'),
+              os.path.join(parent, 'clangd.exe'),
+              os.path.join(parent, 'bin', 'clangd.exe')):
+        if os.path.isfile(p):
+            return os.path.abspath(p)
+    return os.path.join(BASE, 'bin', 'clangd.exe')   # 都不在时保留旧默认路径
+
+
+CLANGD = _find_clangd_bin()
 KEEP_ORIGINAL = False
 # 设环境变量 CLANGD_ZH_NOTES=0 可回到旧行为：只翻主句，note 保留英文
 TRANSLATE_NOTES = os.environ.get('CLANGD_ZH_NOTES', '1') != '0'

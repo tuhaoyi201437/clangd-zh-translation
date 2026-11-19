@@ -25,7 +25,7 @@
 
 于是把约束写清楚：**本地运行、运行期离线、零第三方 Python 包、可迁移到另一台电脑、未命中的诊断必须原样保留英文**。这里的「零依赖」只指 Python 侧不需要安装任何第三方库；clangd、`g++` 与 Python 解释器本身仍是必需的运行环境，见第 5 节。最后一条尤其重要——宁可不翻，也不能翻错而误导读者。
 
-> **获取方式**：本文配套文件是仓库根目录下的 [clangd-zh-translation.zip](./clangd-zh-translation.zip)（8 个文件、约 42 KB）；仓库内同时提供解压后的全部源文件。它**不含** Python 运行时，也**不含** clangd 本体，两者都用读者机器上已装好的。第 2 至 4 节给出了全部关键实现，读者也可据此自行复现，不依赖该附件。
+> **获取方式**：本文配套文件是仓库根目录下的 [clangd-zh-translation.zip](./clangd-zh-translation.zip)（9 个文件、约 47 KB）；仓库内同时提供解压后的全部源文件。它**不含** Python 运行时，也**不含** clangd 本体，两者都用读者机器上已装好的。第 2 至 4 节给出了全部关键实现，读者也可据此自行复现，不依赖该附件。
 
 ## 二、整体设计：在标准输入输出上做一层只改文本的转发
 
@@ -269,18 +269,19 @@ g++ -E -x c++ -v -
 
 必需：[Python](https://www.python.org/) 3.8 及以上、clangd 本体、VS Code 与 vscode-clangd 扩展。独立 zip 可从 [clangd 的 GitHub Releases](https://github.com/clangd/clangd/releases) 获取；[官方安装说明](https://clangd.llvm.org/installation) 主要介绍通过 LLVM installer 等方式安装，以及 `compile_commands.json` / `compile_flags.txt` 的配置。建议安装 [MinGW-w64](https://www.mingw-w64.org/) 系工具链，否则第 4 节无法自动获得标准库路径。
 
-1. 解压压缩包到任意目录，**整个文件夹一起移动**，中文路径、空格路径均实测可用。
+1. 把解压出的**整个文件夹放进 clangd 目录里**（与 `bin`、`lib` 同级，例如 `C:\clangd\clangd-zh-portable\`），整个文件夹一起移动，不要再套一层。位置是硬要求：安装时只在**包目录及其上一级**查找 `clangd.exe`，不查 `PATH`、不查 `Program Files`、不扫其他盘符，以免机器上装有多份 clangd 时悄悄用错。细节见包内 `安装前须知.txt`。
 2. 双击 `安装.cmd`：依次完成「探测 Python / clangd / g++ → 把绝对路径写进启动器并生成编译参数 → 备份并更新 `settings.json`、安装扩展 → 起一次真实语言服务验证中文诊断」。
 3. 在 VS Code 里执行 `Ctrl+Shift+P` → `Reload Window`。**这一步不能省**：已经运行的旧代理进程不会热更新。
 
-自动探测失败时，可用 `CLANGD_PY`、`CLANGD_EXE`、`CLANGD_GXX` 三个环境变量手动指定。`安装.cmd --test` 只做探测与验证、不写任何配置；`安装.cmd --std=c++14` 可把 clangd 标准切到与编译一致。修改过任何 `.py` 后同样需要 `Reload Window`。
+clangd 探测失败时，安装会把尝试过的 4 条路径原样打印出来，便于对照实际位置；可把文件夹挪到正确位置，或用 `CLANGD_PY`、`CLANGD_EXE`、`CLANGD_GXX` 三个环境变量手动指定（设置 `CLANGD_EXE` 会直接跳过目录探测）。代理自身定位 clangd 的优先级与之一致：`CLANGD_EXE` → 包目录 → 上一级目录。`安装.cmd --test` 只做探测与验证、不写任何配置；`安装.cmd --std=c++14` 可把 clangd 标准切到与编译一致。修改过任何 `.py` 后同样需要 `Reload Window`。
 
 ### 文件清单
 
 | 文件 | 作用 |
 | :--- | :--- |
+| `安装前须知.txt` | 解压位置与 clangd 探测规则的硬要求，安装前必读 |
 | `安装.cmd` | 双击入口，纯 ASCII 以避免 cmd 中文乱码 |
-| `install.py` | 探测、写启动器、合并配置、端到端验证 |
+| `install.py` | 探测（clangd 只查包目录及上一级）、写启动器、合并配置、端到端验证 |
 | `clangd-zh.cmd` | VS Code 实际调用的启动器；包内原版用 `%~dp0` 相对定位，安装时才由 `install.py` 写入探测到的 Python / clangd 绝对路径 |
 | `clangd_zh_proxy.py` | LSP 代理本体，只改写诊断文本 |
 | `zh_codes.py` | 诊断码词典 |
