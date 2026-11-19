@@ -356,6 +356,7 @@ _HOVER_TITLE = re.compile(r'^(#{1,6}\s+)(.*)$')
 _HOVER_BACKTICK_KIND = re.compile(r'^`([^`]+)`\s*(.*)$')
 _HOVER_SIG_CHARS = set('{}();=')
 _HOVER_PLAIN_NAME = re.compile(r'^[\w:~<>,*& ]+$')
+_HOVER_INLINE_TAG = re.compile(r'@(?:endlink|link|ref|sa|a|p|c|e|b)\b[ \t]*')
 
 
 def _hover_kind_title(head, rest):
@@ -397,6 +398,12 @@ def _hover_plain_title(core):
             if name and _HOVER_PLAIN_NAME.match(name):
                 return HOVER_KINDS[k] + ' ' + name
     return None
+
+
+def _strip_inline_tags(text):
+    """去掉 Doxygen 句内标记(@a/@p/@c 等),只留它们指向的符号名,正文其余字符不动。"""
+    out = _HOVER_INLINE_TAG.sub('', text)
+    return re.sub(r' {2,}', ' ', out)
 
 
 def _hover_outer(line):
@@ -458,7 +465,16 @@ def translate_hover_markdown(value):
             in_code = not in_code
             out.append(line)
             continue
-        out.append(_hover_comment(line) if in_code else _hover_outer(line))
+        if in_code:
+            out.append(_hover_comment(line))      # 代码签名原样,只翻 // 注释
+            continue
+        new = _hover_outer(line)
+        if '@' in new:                            # 句中的 @a/@p/@c 只是排版记号,去掉
+            stripped = _strip_inline_tags(new)
+            if stripped != new:
+                log('hover 内联标记清理：%s -> %s' % (new.strip(), stripped.strip()))
+                new = stripped
+        out.append(new)
     return '\n'.join(out)
 
 
@@ -682,6 +698,15 @@ def write_frame(stream, body):
 
 
 def translate_frame(body):
+    """兜底:任何翻译异常都只影响这一帧,绝不把代理整个带崩。"""
+    try:
+        return _translate_frame(body)
+    except Exception as e:
+        log('翻译异常,该帧原样透传：%s: %s' % (type(e).__name__, e))
+        return body
+
+
+def _translate_frame(body):
     if not translation_enabled():
         return body                   # 开关关闭:整帧原样透传,连 JSON 都不解析
     try:

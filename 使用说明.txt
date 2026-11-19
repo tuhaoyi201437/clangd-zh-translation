@@ -8,12 +8,13 @@
 它是一个 LSP 代理：夹在 VS Code 和 clangd 中间，只改诊断文字，
 补全、跳转、格式化、编译全都不受影响。全程本地离线、零联网、零密钥。
 
-本包只有 8 个文件、约 42 KB：
+本包只有 8 个文件、约 44 KB：
   * 不含 Python 运行时
   * 不含 clangd 本体
-这两样都用你自己电脑上已经装好的。词典共 696 条规则：
+这两样都用你自己电脑上已经装好的。词典共 728 条规则：
 诊断 630 条（文本 298 + note 专用 97 + 诊断码 220 + 精确码 11 + 包装 4），
-悬浮提示 66 条（种类标签、类型说明、返回类型、作用域注释、传参方式、字段偏移与大小）。
+悬浮提示 98 条（种类标签、类型说明、返回类型、作用域注释、传参方式、
+Doxygen 标签、字段偏移与大小）。
 没命中的一律保留英文原文，不会乱翻。
 主句、候选提示、note 位置说明（含 relatedInformation）会一起翻译；
 鼠标停在变量 / 函数上的悬浮提示也会翻；代码签名保持源码原样。
@@ -133,6 +134,22 @@
                            -> 以引用传递给形参 r
       Passed by const reference as cr
                            -> 以常量引用传递给形参 cr
+
+  标准库接口还会带出库里的 Doxygen 注释。只翻标签，正文保持英文：
+      @brief xxx           -> 简要说明: xxx
+      @param __a xxx       -> 形参 __a: xxx
+      @tparam _Tp xxx      -> 模板形参 _Tp: xxx
+      @return xxx          -> 返回: xxx
+      @retval 0 xxx        -> 返回值 0: xxx
+      @ingroup xxx         -> 所属分组: xxx
+      @throw std::xxx yyy  -> 抛出异常: std::xxx yyy
+      @pre / @post xxx     -> 前置条件 / 后置条件: xxx
+      @note / @warning xxx -> 注意 / 警告: xxx
+      @see / @sa xxx       -> 参见: xxx
+      @since xxx           -> 起始版本: xxx
+      @deprecated xxx      -> 已弃用: xxx
+  句子中间的 @a __n、@p x、@c Type 是排版记号，会把标记本身去掉，
+  只留对应的符号名；注释的英文正文一个字都不翻。
 
   代码块里的声明本身（int n、int main()）不翻：那是可以直接
   复制的真实 C++ 代码，改成中文会破坏语法高亮和复制。
