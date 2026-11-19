@@ -468,13 +468,17 @@ def translate_hover_markdown(value):
         if in_code:
             out.append(_hover_comment(line))      # 代码签名原样,只翻 // 注释
             continue
-        new = _hover_outer(line)
+        # clangd 用行尾两个空格表示 Markdown 硬换行,改写时必须原样保留,
+        # 否则连续的 @brief/@ingroup/@param 会被渲染器折成一行
+        body = line.rstrip()
+        trail = line[len(body):]
+        new = _hover_outer(body)
         if '@' in new:                            # 句中的 @a/@p/@c 只是排版记号,去掉
             stripped = _strip_inline_tags(new)
             if stripped != new:
                 log('hover 内联标记清理：%s -> %s' % (new.strip(), stripped.strip()))
                 new = stripped
-        out.append(new)
+        out.append(new + trail)
     return '\n'.join(out)
 
 
