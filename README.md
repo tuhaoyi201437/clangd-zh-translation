@@ -265,6 +265,25 @@ g++ -E -x c++ -v -
 
 项目早期在 TDM-GCC 10.3.0 上开发与验证；工具链升级到 GCC 16.2.0 之后，本文涉及的对照实验、诊断示例与 `install.py --test` 均已在新环境下重新采集和复测，结论一致。文中所有头文件路径以当前的 16.2.0 环境为准。
 
+### 代理开销实测
+
+代理只改写 LSP 消息里的文本字段，不做索引、不调用编译器。下表是在上述机器上用 `time.perf_counter_ns` 做的函数级微基准：先热身 200 次，再采样 3000 次（整帧 600 次），词典为 817 条规则。数字是单次运行的样本，不同机器会有差异；它衡量的是**代理自身的 CPU 开销**，不含 clangd 分析、管道传输与 VS Code 渲染时间。
+
+| 操作 | 平均 | p50 | p99 |
+| :--- | ---: | ---: | ---: |
+| 精确码命中（`-Winteger-overflow`） | 5.0 μs | 4.9 μs | 5.6 μs |
+| 文本规则命中（`expected ';' after expression`） | 10.0 μs | 9.5 μs | 18.0 μs |
+| note 命中（带 `(aka '...')` 的转换说明） | 17.5 μs | 16.8 μs | 32.2 μs |
+| 诊断码规则命中（文本与按码两条链择优） | 41.9 μs | 38.3 μs | 96.2 μs |
+| 未命中（遍历全部规则后保留英文原文） | 50.7 μs | 47.8 μs | 96.4 μs |
+| hover 响应帧（markdown，含代码块与字段说明） | 58.7 μs | 57.1 μs | 91.3 μs |
+| `translation_enabled()`（缓存命中） | 46.2 μs | 41.6 μs | 105.5 μs |
+| 整帧 20 条诊断 + 7 条 `relatedInformation`（5,898 B） | 1,138 μs | 980 μs | 2,379 μs |
+
+冷启动（含 Python 解释器启动与词典载入）中位数 **286 ms**（7 次，276~299 ms），其中词典载入本身约 **30 ms**；只在 VS Code 启动语言服务时发生一次。整帧折算下来每条诊断约 **57 μs**：即便一次保存触发几十条诊断，代理耗时也远小于 clangd 重新解析一个头文件的时间。
+
+开关检测每帧都会 `stat` 一遍候选 `tasks.json`，缓存命中时约 46 μs——这是让配置改动即时生效的代价。若 `tasks.json` 关闭翻译或环境变量强制关闭，整帧直接原样透传，连 JSON 都不会解析。
+
 ### 依赖与三步安装
 
 必需：[Python](https://www.python.org/) 3.8 及以上、clangd 本体、VS Code 与 vscode-clangd 扩展。独立 zip 可从 [clangd 的 GitHub Releases](https://github.com/clangd/clangd/releases) 获取；[官方安装说明](https://clangd.llvm.org/installation) 主要介绍通过 LLVM installer 等方式安装，以及 `compile_commands.json` / `compile_flags.txt` 的配置。建议安装 [MinGW-w64](https://www.mingw-w64.org/) 系工具链，否则第 4 节无法自动获得标准库路径。
