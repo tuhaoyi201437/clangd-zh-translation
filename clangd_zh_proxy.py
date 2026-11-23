@@ -30,6 +30,9 @@
   环境变量 CLANGD_ZH=0/1         强制关闭/开启翻译(最高优先级)
   tasks.json 里 "clang-zh": null 关闭翻译(用户级 + 工作区,即时生效)
   CLANGD_ZH_TASKS_DIR            手动指定 tasks.json 所在目录(调试用)
+  CLANGD_ZH_MISS_LOG             [本地专用] 设为文件路径后,把没有规则命中的
+                                 报错/警告以 JSONL 追加到该文件,便于事后复核补词典。
+                                 不设置则完全不启用(发布包默认不设,无副作用)。
 悬浮提示是独立的一条链：按行翻译 Markdown，围栏代码块内只翻 // 注释行。
 词典：zh_codes.py(按诊断码)、zh_diagnostics.py(按文本)，均可直接编辑
 """
@@ -39,6 +42,7 @@ import re
 import subprocess
 import sys
 import threading
+import time
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 
@@ -70,6 +74,10 @@ KEEP_ORIGINAL = False
 TRANSLATE_NOTES = os.environ.get('CLANGD_ZH_NOTES', '1') != '0'
 DEBUG = os.environ.get('CLANGD_ZH_DEBUG') == '1'
 LOG_PATH = os.path.join(BASE, 'proxy.log')
+# [本地专用] 未命中诊断记录:只有显式设置了 CLANGD_ZH_MISS_LOG 才启用。
+MISS_LOG = os.environ.get('CLANGD_ZH_MISS_LOG', '').strip()
+MISS_SEEN = set()          # 进程内去重,避免同一条报错刷屏
+MISS_LOCK = threading.Lock()
 FLAGS = re.IGNORECASE | re.DOTALL
 FIX_TAG = re.compile(r'\s*\((?:fix|fixes) available[^)]*\)\s*$', re.I)
 QUOTED = re.compile(r"'([^']*)'")
@@ -81,6 +89,29 @@ AKA = re.compile(r"\(aka '([^']*)'\)")
 AKA_TRAIL = re.compile(r"\s*\(aka '([^']*)'\)\s*$", re.I)
 # clangd 把头文件内的错误在 #include 行重述为 "In included file: xxx"
 INCLUDED_PREFIX = re.compile(r'^In included file:\s*(.*)$', re.I | re.S)
+# 句中也可能出现 (aka 'xxx')，例如
+#   cannot initialize a variable of type 'int' (aka 'int') with ... 'char'
+# 若按原样取单引号内容，会把别名当成第 2 个变量，导致 {N} 整体错位。
+# 仅用于「取引号内容」时剥离；对外展示的 aka 仍由 AKA/AKA_TRAIL 负责翻译成「即」。
+AKA_ANYWHERE = re.compile(r"\(aka\s+'[^']*'\)", re.I)
+# 译文里若还残留 \1 / {1} 这类未替换的组引用，说明模板与正则不匹配，
+# 这条翻译必须丢弃，不能把半截占位符显示给用户。
+LEFTOVER_REF = re.compile(r'\\[1-9]|(?<!\\)\{\d+\}')
+# NOTE_RULES 的 {N} 是「留给递归翻译」的占位符，属于正常设计，
+# 这里只拦截 expand 之后仍残留的反斜杠引用。
+BACKREF_LEFTOVER = re.compile(r'\\[1-9]')
+
+
+def _expand_checked(m, tpl, label, src):
+    """m.expand 后校验：残留组引用或抛异常都视为该规则不可用。"""
+    try:
+        zh = m.expand(tpl)
+    except Exception:
+        return None
+    if LEFTOVER_REF.search(zh):
+        log('%s 模板残留引用，跳过：%s -> %s' % (label, src, tpl))
+        return None
+    return zh
 
 # ---------------------------------------------------------------- 翻译总开关
 # 读 VS Code 的 tasks.json(用户级 + 工作区),若 clang-zh 为 None/null/Off 则整帧透传。
@@ -373,6 +404,49 @@ def load_hover_rules():
 
 
 HOVER_KINDS, HOVER_LABELS, HOVER_COMMENTS, HOVER_UNITS = load_hover_rules()
+
+
+def audit_rules():
+    """词典自检：正则无法编译、模板引用越界、重复正则。
+
+    只在 CLANGD_ZH_DEBUG=1 时写 proxy.log；不打印到 stdout，避免污染 LSP 帧，
+    也不改变任何翻译行为。补完规则后开调试模式启动一次即可发现潜在匹配错误。
+    """
+    if not DEBUG:
+        return
+    problems = []
+
+    def scan(name, pairs):
+        seen = {}
+        for i, (pat, tpl) in enumerate(pairs):
+            src = getattr(pat, 'pattern', str(pat))
+            if src in seen:
+                problems.append('%s[%d] 重复正则(同[%d])：%s' % (name, i, seen[src], src))
+            else:
+                seen[src] = i
+            refs = {int(x) for x in re.findall(r'\\(\d+)', str(tpl))}
+            refs |= {int(x) for x in re.findall(r'\{(\d+)\}', str(tpl))}
+            if refs and max(refs) > pat.groups:
+                problems.append('%s[%d] 模板引用第 %d 组，但正则只有 %d 组：%s -> %s'
+                                % (name, i, max(refs), pat.groups, src, tpl))
+
+    scan('文本规则', RULES)
+    scan('包装规则', WRAPPERS)
+    scan('note 规则', NOTE_RULES)
+    scan('悬浮说明', HOVER_LABELS)
+    scan('悬浮注释', HOVER_COMMENTS)
+    scan('悬浮单位', HOVER_UNITS)
+    for k, (pat, tpl) in CODE_EXACT.items():
+        scan('精确码[%s]' % k, [(pat, tpl)])
+    if problems:
+        log('规则自检发现 %d 处可疑：' % len(problems))
+        for x in problems:
+            log('  ' + x)
+    else:
+        log('规则自检：未发现越界引用或重复正则')
+
+
+audit_rules()
 _HOVER_KIND_KEYS = sorted(HOVER_KINDS, key=len, reverse=True)
 _HOVER_FENCE = re.compile(r'^\s*(?:`{3,}|~{3,})')
 _HOVER_TITLE = re.compile(r'^(#{1,6}\s+)(.*)$')
@@ -547,6 +621,40 @@ def translate_hover_frame(msg, body):
 
 
 
+# 记录上下文:由 _translate_frame 在每条诊断前设置,供 _record_miss 取用
+MISS_CTX = {'uri': '', 'kind': 'diag'}
+
+
+def _record_miss(text, code):
+    """[本地专用] 把没有规则命中的诊断文本追加到 MISS_LOG(JSONL)。
+
+    只在设置了 CLANGD_ZH_MISS_LOG 时生效;进程内按 (code, text) 去重,
+    避免编辑器反复推送同一条诊断时刷屏。任何异常都吞掉,不影响翻译链。
+    """
+    if not MISS_LOG or not isinstance(text, str):
+        return
+    s = text.strip()
+    if not s or not re.search(r'[A-Za-z]', s):
+        return
+    key = ((code or ''), s)
+    with MISS_LOCK:
+        if key in MISS_SEEN:
+            return
+        MISS_SEEN.add(key)
+    try:
+        rec = {
+            'ts': time.strftime('%Y-%m-%d %H:%M:%S'),
+            'code': code or '',
+            'kind': MISS_CTX.get('kind', 'diag'),
+            'uri': MISS_CTX.get('uri', ''),
+            'text': s,
+        }
+        with open(MISS_LOG, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(rec, ensure_ascii=False) + '\n')
+    except Exception:
+        pass
+
+
 def translate(text, code=None, depth=0):
     if not isinstance(text, str) or not text or not (RULES or CODE_RULES):
         return text
@@ -580,44 +688,65 @@ def translate(text, code=None, depth=0):
         pat, tpl = CODE_EXACT[code]
         m = pat.search(base)
         if m:
-            try:
-                zh = m.expand(tpl)
+            zh = _expand_checked(m, tpl, '精确码', s)
+            if zh:
                 log('精确码命中：%s [%s] -> %s' % (s, code, zh))
                 return finish(zh)
-            except Exception:
-                pass
 
+    # 精确文本规则与「按诊断码 + 引号位置」的兜底都算一遍，取信息更完整的一个。
+    # 单纯让文本规则优先会丢掉更详细的按码译文（如 "cannot open file"）；
+    # 单纯让按码优先又会漏掉 "after expression" 这类句式细节。
+    rule_zh = None
+    for pat, tpl in RULES:
+        m = pat.fullmatch(base)
+        if not m:
+            continue
+        # 文本规则的 (.+?) 可能跨引号把后半句一起吞掉，例如
+        #   "use of undeclared identifier 'foo' in 'main'"
+        # 会被捕成 group(1)="foo' in 'main"，直接套模板会残留英文。
+        # 捕获组里出现成对的单引号即判定为过度捕获，让位给按码取值。
+        if any((g or '').count("'") >= 2 for g in m.groups()):
+            log('文本规则过度捕获，让位给诊断码：%s [%s]' % (base, code))
+            continue
+        rule_zh = _expand_checked(m, tpl, '文本', base)
+        if rule_zh:
+            break
+
+    code_zh = None
     if code and code in CODE_RULES:
         tpl = CODE_RULES[code]
         needed = max([int(n) for n in re.findall(r'\{(\d+)\}', tpl)] or [0])
-        vals = QUOTED.findall(base)
+        # 先剥掉句中 (aka 'xxx')，否则别名会混进引号序列把 {N} 填错位
+        quote_src = AKA_ANYWHERE.sub('', base)
+        vals = QUOTED.findall(quote_src)
         if len(vals) >= needed:
             out = tpl
             for i, v in enumerate(vals[:8], 1):
                 out = out.replace('{%d}' % i, "'%s'" % v)
             out = re.sub(r'\{\d+\}', '', out).strip()
-            if out:
-                log('诊断码命中：%s [%s] -> %s' % (s, code, out))
-                return finish(out)
+            if out and not LEFTOVER_REF.search(out):
+                code_zh = out
 
-    for pat, tpl in RULES:
-        m = pat.fullmatch(base)
-        if m:
-            try:
-                zh = m.expand(tpl)
-            except Exception:
-                continue
-            log('文本命中：%s -> %s' % (base, zh))
-            return finish(zh)
+    if rule_zh and code_zh:
+        zh = rule_zh if len(rule_zh) >= len(code_zh) else code_zh
+        log('规则择优：文本[%s] 诊断码[%s] -> %s' % (rule_zh, code_zh, zh))
+    else:
+        zh = rule_zh or code_zh
+    if zh:
+        log('翻译命中：%s -> %s' % (base, zh))
+        return finish(zh)
 
     if depth < 2:
         for pat, tpl in WRAPPERS:
             m = pat.fullmatch(base)
             if m:
-                inner = m.group(1) if m.lastindex else ''
+                # 用 group(1) 而非 lastindex：后者只是「最后参与匹配的组号」，
+                # 正则里存在可选组时可能指向第 2 组，导致内层取错文本。
+                inner = m.group(1) or ''
                 return finish(tpl.replace('{0}', translate(inner, None, depth + 1)))
 
     log('未命中：%s [%s]' % (s, code))
+    _record_miss(s, code)
     return text
 
 
@@ -644,11 +773,17 @@ def translate_note(s, depth=0):
             zh = m.expand(tpl)
         except Exception:
             continue
+        if BACKREF_LEFTOVER.search(zh):
+            log('note 模板残留引用，跳过：%s -> %s' % (s, tpl))
+            continue
         if '{' in zh and depth < 3:
             def _sub(mo):
                 n = int(mo.group(1))
-                if n <= (m.lastindex or 0):
-                    return translate_note(m.group(n) or '', depth + 1)
+                # lastindex 只表示「最后参与匹配的组」，正则含可选组时会偏小，
+                # 用 groups() 才能覆盖模板实际引用的全部组号。
+                if n <= len(m.groups()):
+                    sub = m.group(n)
+                    return translate_note(sub, depth + 1) if sub else ''
                 return ''
             zh = re.sub(r'\{(\d+)\}', _sub, zh)
         else:
@@ -711,7 +846,12 @@ def read_frame(stream):
         if b':' in line:
             k, v = line.decode('ascii', 'replace').split(':', 1)
             headers[k.strip().lower()] = v.strip()
-    length = int(headers.get('content-length', '0') or '0')
+    try:
+        length = int(headers.get('content-length', '0') or '0')
+    except (TypeError, ValueError):
+        # 畸形头不能带崩转发线程；交给上层按帧丢弃，clangd 会重发。
+        log('畸形 Content-Length：%r' % headers.get('content-length'))
+        return None
     if length <= 0:
         return b''
     body = stream.read(length)
@@ -743,6 +883,9 @@ def _translate_frame(body):
     if not isinstance(msg, dict) or msg.get('method') != 'textDocument/publishDiagnostics':
         return translate_hover_frame(msg, body)
     params = msg.get('params') or {}
+    if MISS_LOG:
+        MISS_CTX['uri'] = str(params.get('uri') or '')
+        MISS_CTX['kind'] = 'diag'
     diags = params.get('diagnostics')
     if not isinstance(diags, list):
         return body
@@ -763,11 +906,13 @@ def _translate_frame(body):
         if TRANSLATE_NOTES and isinstance(rel, list):
             for r in rel:
                 if isinstance(r, dict) and isinstance(r.get('message'), str):
+                    MISS_CTX['kind'] = 'note'
                     old = r['message']
                     new = translate_message(old, None)
                     if new != old:
                         r['message'] = new
                         changed = True
+                    MISS_CTX['kind'] = 'diag'
     if not changed:
         return body
     return json.dumps(msg, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
