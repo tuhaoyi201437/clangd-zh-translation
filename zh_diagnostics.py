@@ -404,6 +404,8 @@ EXTRA_RULES = [
      r"变量 '\1' 无法在无默认捕获方式的 Lambda 中隐式捕获(应写成 '[=]'/'[&]' 或把 '\1' 加入捕获列表)"),
     (r"Integer literal is too large to be represented in any integer type",
      "整数字面量过大，无法用任何标准整数类型表示(考虑改用 __int128、大整数库或字符串处理)"),
+    (r"Overflow in expression; result is [0-9']+ with type '([^']+)'",
+     r"表达式溢出；结果超出类型 '\1' 的表示范围"),
 ]
 
 NOTE_RULES = [
