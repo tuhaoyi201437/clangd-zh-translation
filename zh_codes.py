@@ -291,7 +291,7 @@ CODE_EXACT = {
     # -Winteger-overflow：结果数字用单引号做千位分隔，不能走 QUOTED 取值，
     # 否则会把 '127'/'248' 等当成引用内容。这里用精确正则整体捕获。
     "-Winteger-overflow": (
-        r"Overflow in expression; result is ([0-9']+) with type '([^']+)'",
+        r"Overflow in expression; result is (-?[0-9']+) with type '([^']+)'",
         r"表达式溢出；结果为 \1，超出类型 '\2' 的表示范围"),
 }
 
