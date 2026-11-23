@@ -408,6 +408,29 @@ EXTRA_RULES = [
      r"表达式溢出；结果超出类型 '\1' 的表示范围"),
     (r"'(.+?)' declared as an array with a negative size",
      r"数组 '\1' 的长度为负数(数组大小必须是正整数)"),
+    # ---- 2026-11-23 复核未翻译.py 剩余 19 组(文本兜底) ----
+    (r"'(.+?)' declared as array of functions of type '(.+?)'",
+     r"数组元素不能是函数：'\1' 不能声明为函数类型 '\2' 的数组"),
+    (r"Variable '(.+?)' declared with deduced type '(.+?)' cannot appear in its own initializer",
+     r"变量 '\1' 声明为推导类型 '\2'，不能出现在它自己的初始化表达式中"),
+    (r"Expected '(.+?)' in do/while loop", r"do/while 循环中需要 '\1'"),
+    (r"Declaration of anonymous (struct|class|union) must be a definition",
+     r"匿名 \1 必须就地定义(不能只写声明)"),
+    ("Definition of variable with array type needs an explicit size or an initializer",
+     "数组类型的变量定义必须写明长度或提供初始化器"),
+    ("Missing default argument on parameter", "参数缺少默认实参"),
+    (r"Missing default argument on parameter '(.+?)'", r"参数 '\1' 缺少默认实参"),
+    (r"Member initializer '(.+?)' does not name a non-static data member or base class",
+     r"成员初始化列表中的 '\1' 不是非静态数据成员或基类"),
+    (r"'(.+?)' does not refer to a value", r"'\1' 不是值(这里需要变量名或表达式，不能写类型名)"),
+    (r"Unexpected namespace name '(.+?)': expected expression",
+     r"这里不该出现命名空间名 '\1'：此处需要表达式"),
+    ("Expected ';' in 'for' statement specifier", "for 语句的说明符中缺少分号 ';'"),
+    ("Range-based 'for' statement uses ':', not '='", "范围 for 语句应使用 ':'，而不是 '='"),
+    ("Type name requires a specifier or qualifier", "类型名需要说明符或限定符(如 const / 命名空间限定)"),
+    (r"'(.+?)' in capture list does not name a variable", r"捕获列表中的 '\1' 不是变量名"),
+    ("Variable length array declaration not allowed at file scope",
+     "文件作用域不允许变长数组(VLA)声明(长度必须是常量表达式)"),
 ]
 
 NOTE_RULES = [
@@ -574,6 +597,10 @@ NOTE_RULES = [
     (r"Function parameter '(.+?)' with unknown value cannot be used in a constant expression",
      r"函数参数 '\1' 的值在编译期未知，不能用于常量表达式"),
     (r"Candidate function template", "候选函数模板"),
+    # ---- 2026-11-23 复核未翻译.py 剩余 note ----
+    ("Lambda expression begins here", "Lambda 表达式从这里开始"),
+    (r"Conversion candidate of type '(.+?)'", r"类型为 '\1' 的转换候选"),
+    (r"Initializer of '(.+?)' is unknown", r"'\1' 的初始化值未知"),
 ]
 
 
