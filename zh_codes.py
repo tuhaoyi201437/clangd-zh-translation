@@ -26,6 +26,10 @@ CODE_RULES = {
     "ext_using_undefined_std": "using 指令引用了隐式定义的命名空间 'std'"
                                 "(通常表示没有包含对应的标准头文件)",
     "expected_expression": "此处需要一个表达式",
+    # 在表达式位置写了类型名,例如 auto x = nullptr_t;(应为 std::nullptr_t{} 或值)
+    "unexpected_typedef": "此处应为表达式，却出现了类型名 {1}(检查是否漏写构造调用或 std:: 限定)",
+    # 对没有重载 ++/-- 的类型做自增/自减
+    "typecheck_illegal_increment_decrement": "不能对类型 {1} 的值做自增/自减(该类型没有 ++/-- 运算符)",
     # lambda 少写函数体,例如 [](int a) a + 1
     "expected_lambda_body": "此处缺少 lambda 表达式的函数体(要写成 { 语句 } 的形式)",
     "expected_statement": "此处需要一条语句",
