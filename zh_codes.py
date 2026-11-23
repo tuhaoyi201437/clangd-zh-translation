@@ -325,4 +325,5 @@ EXTRA_CODE_RULES = {
     "attributes_not_allowed": "这里不允许出现属性列表",
     "extraneous_token_before_semi": "分号 ';' 前有多余的 {1}",
     "lambda_impcap": "变量 {1} 无法在无默认捕获方式的 Lambda 中隐式捕获(应写成 '[=]'/'[&]' 或把 {1} 加入捕获列表)",
+    "integer_literal_too_large": "整数字面量过大，无法用任何标准整数类型表示(考虑改用 __int128、大整数库或字符串处理)",
 }

@@ -402,6 +402,8 @@ EXTRA_RULES = [
     (r"Array index (-?\d+) is past the end of the array", r"数组下标 \1 越界(超出数组末尾)"),
     (r"Variable '(.+?)' cannot be implicitly captured in a lambda with no capture-default specified",
      r"变量 '\1' 无法在无默认捕获方式的 Lambda 中隐式捕获(应写成 '[=]'/'[&]' 或把 '\1' 加入捕获列表)"),
+    (r"Integer literal is too large to be represented in any integer type",
+     "整数字面量过大，无法用任何标准整数类型表示(考虑改用 __int128、大整数库或字符串处理)"),
 ]
 
 NOTE_RULES = [
