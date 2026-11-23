@@ -67,6 +67,7 @@ RULES = [
      "此处缺少 lambda 表达式的函数体(要写成 { 语句 } 的形式)"),
     (r"expected expression", r"此处需要一个表达式"),
     (r"expected unqualified-id", r"此处需要一个标识符"),
+    (r"Using declaration requires a qualified name", r"using 声明需要限定名(应写成 'using 命名空间::名字;' 或 'using namespace 命名空间;')"),
     (r"expected parameter declarator", r"此处需要参数声明"),
     (r"expected namespace name", r"此处需要命名空间名"),
     (r"expected '(;|\)|\}|\]|,)'", r"此处缺少 '\1'"),
@@ -236,6 +237,8 @@ RULES = [
     (r"candidate constructor not viable", r"候选构造函数不可用"),
     (r"cannot define or redeclare '(.+?)' here because namespace .*", r"此处不能定义或重新声明 '\1'(命名空间不匹配)"),
     (r"use of '(.+?)' before deduction of 'auto'", r"在推导 auto 之前就使用了 '\1'"),
+    (r"expected ';' after using declaration", r"using 声明后缺少分号 ';'"),
+    (r"Reference to overloaded function could not be resolved; did you mean to call it\?", r"无法解析对重载函数的引用(是否想调用它？)"),
     (r"expected ';' after (.*)", r"\1 后缺少分号 ';'"),
 
     # 警告文本兜底：万一某些 clangd 版本不带 code 或 code 格式不同
@@ -369,6 +372,7 @@ EXTRA_RULES = [
 
 NOTE_RULES = [
     (r"in call to '(.+?)'", r"在调用 '\1' 时"),
+    (r"Possible target for call", "可能的目标调用"),
     (r"member function '(.+?)' is declared const here",
      r"成员函数 '\1' 在此处被声明为 const"),
     # ---- 候选函数 / 构造函数不可用：原因用 {N} 递归翻译 ----

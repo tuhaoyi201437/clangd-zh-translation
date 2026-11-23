@@ -192,6 +192,8 @@ CODE_RULES = {
     "template_deduction_failure": "模板参数推导失败",
     "use_of_class_template_requires_template_args": "使用类模板 {1} 时必须写出模板参数",
     "typename_requires_qualified": "'typename' 只能用于限定名",
+    "using_requires_qualname": "using 声明需要限定名(应写成 'using 命名空间::名字;' 或 'using namespace 命名空间;')",
+    "ovl_unresolvable": "无法解析对重载函数的引用(是否想调用它？)",
     "static_assert_failed": "静态断言失败",
     "static_assert_requirement": "静态断言失败：条件 {1} 不成立",
     "no_matching_template": "没有匹配的模板",
