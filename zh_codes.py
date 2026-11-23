@@ -324,4 +324,5 @@ EXTRA_CODE_RULES = {
     "-Wpointer-bool-conversion": "数组或函数的地址恒为 true(永远为真)",
     "attributes_not_allowed": "这里不允许出现属性列表",
     "extraneous_token_before_semi": "分号 ';' 前有多余的 {1}",
+    "lambda_impcap": "变量 {1} 无法在无默认捕获方式的 Lambda 中隐式捕获(应写成 '[=]'/'[&]' 或把 {1} 加入捕获列表)",
 }
