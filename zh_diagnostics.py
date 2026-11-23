@@ -406,6 +406,8 @@ EXTRA_RULES = [
      "整数字面量过大，无法用任何标准整数类型表示(考虑改用 __int128、大整数库或字符串处理)"),
     (r"Overflow in expression; result is -?[0-9']+ with type '([^']+)'",
      r"表达式溢出；结果超出类型 '\1' 的表示范围"),
+    (r"'(.+?)' declared as an array with a negative size",
+     r"数组 '\1' 的长度为负数(数组大小必须是正整数)"),
 ]
 
 NOTE_RULES = [
