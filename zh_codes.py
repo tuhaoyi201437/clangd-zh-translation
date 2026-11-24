@@ -357,4 +357,6 @@ EXTRA_CODE_RULES = {
     "invalid_token_after_declarator_suggest_equal": "声明末尾出现了无效的运算符 {1}(是否想写 {2}？)",
     "-Wformat-zero-length": "格式串为空(printf/scanf 的格式串不能为空)",
     "expected_comma_or_rsquare": "Lambda 捕获列表中需要 ',' 或 ']'",
+    "-Wvexing-parse": "空括号被解释为函数声明(最令人烦恼的解析，改用 '{}' 初始化)",
+    "-Wgnu-folding-constant": "变长数组被作为扩展折叠成常量数组(长度实际是编译期常量)",
 }

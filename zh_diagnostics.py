@@ -447,6 +447,10 @@ EXTRA_RULES = [
      r"声明末尾出现了无效的运算符 '\1'(是否想写 '\2'？)"),
     ("Format string is empty", "格式串为空(printf/scanf 的格式串不能为空)"),
     ("Expected ',' or ']' in lambda capture list", "Lambda 捕获列表中需要 ',' 或 ']'"),
+    ("Empty parentheses interpreted as a function declaration",
+     "空括号被解释为函数声明(最令人烦恼的解析，改用 '{}' 初始化)"),
+    ("Variable length array folded to constant array as an extension",
+     "变长数组被作为扩展折叠成常量数组(长度实际是编译期常量)"),
 ]
 
 NOTE_RULES = [
@@ -622,6 +626,8 @@ NOTE_RULES = [
      r"模板替换失败\1：没有可用于调用 '\2' 的成员函数"),
     (r"cannot convert initializer list argument to '(.+?)'",
      r"无法把初始化列表实参转换为 '\1'"),
+    (r"no overload of '(.+?)' matching '(.+?)' for (\d+)(?:st|nd|rd|th) argument",
+     r"没有第 \3 个参数为 '\2' 的 '\1' 重载"),
 ]
 
 
