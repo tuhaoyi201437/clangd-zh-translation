@@ -349,4 +349,8 @@ EXTRA_CODE_RULES = {
     "vla_decl_in_file_scope": "文件作用域不允许变长数组(VLA)声明(长度必须是常量表达式)",
     "auto_not_allowed": "使用类模板 {1} 时必须写出模板参数(函数返回类型不允许推导模板实参)",
     "-Wnon-pod-varargs": "不能把非平凡类型 {1} 的对象传给可变参数函数(格式字符串期望的是 {2})",
+    "unknown_nested_typename_suggest": "{2} 中没有名为 {1} 的类型(是否想写 {3}？)",
+    "bad_memptr_rhs": ".* 右操作数的类型 {1} 不是指向成员的指针",
+    "extraneous_rparen_in_condition": "条件后有多余的 ')'，此处需要一条语句",
+    "unexpected_semi": "')' 前出现了多余的分号 ';'",
 }

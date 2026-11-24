@@ -435,6 +435,12 @@ EXTRA_RULES = [
      r"使用类模板 '\1' 时必须写出模板参数(函数返回类型不允许推导模板实参)"),
     (r"Cannot pass non-trivial object of type '(.+?)' to variadic function; expected type from format string was '(.+?)'",
      r"不能把非平凡类型 '\1' 的对象传给可变参数函数(格式字符串期望的是 '\2')"),
+    (r"No type named '(.+?)' in '(.+?)'; did you mean '(.+?)'\?",
+     r"'\2' 中没有名为 '\1' 的类型(是否想写 '\3'？)"),
+    (r"Right hand operand to \.\* has non-pointer-to-member type '(.+?)'",
+     r".* 右操作数的类型 '\1' 不是指向成员的指针"),
+    (r"Extraneous '\)' after condition, expected a statement", "条件后有多余的 ')'，此处需要一条语句"),
+    (r"Unexpected ';' before '\)'", "')' 前出现了多余的分号 ';'"),
 ]
 
 NOTE_RULES = [
