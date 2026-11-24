@@ -360,4 +360,6 @@ EXTRA_CODE_RULES = {
     "-Wvexing-parse": "空括号被解释为函数声明(最令人烦恼的解析，改用 '{}' 初始化)",
     "-Wgnu-folding-constant": "变长数组被作为扩展折叠成常量数组(长度实际是编译期常量)",
     "typecheck_pointer_arith_function_type": "不能对函数指针类型 {1} 做算术运算(函数名后是否漏了 '()'？)",
+    "expected_qualified_after_typename": "'typename' 后需要限定名(应写成 'typename 命名空间::类型')",
+    "expected_capture": "lambda 捕获列表中需要变量名或 'this'",
 }

@@ -62,6 +62,7 @@ RULES = [
     (r"a type specifier is required for all declarations", r"所有声明都必须写明类型"),
     (r"expected ';' after expression", r"表达式后缺少分号 ';'"),
     (r"expected ';' after statement", r"语句后缺少分号 ';'"),
+    (r"expected ';' after (continue|return|break|goto|do) statement", r"\1 语句后缺少分号 ';'"),
     (r"expected ';' at end of declaration(?: list)?", r"声明末尾缺少分号 ';'"),
     (r"expected body of lambda expression",
      "此处缺少 lambda 表达式的函数体(要写成 { 语句 } 的形式)"),
@@ -453,6 +454,10 @@ EXTRA_RULES = [
      "变长数组被作为扩展折叠成常量数组(长度实际是编译期常量)"),
     (r"Arithmetic on a pointer to the function type '(.+?)'",
      r"不能对函数指针类型 '\1' 做算术运算(函数名后是否漏了 '()'？)"),
+    ("Expected a qualified name after 'typename'",
+     "'typename' 后需要限定名(应写成 'typename 命名空间::类型')"),
+    ("Expected variable name or 'this' in lambda capture list",
+     "lambda 捕获列表中需要变量名或 'this'"),
 ]
 
 NOTE_RULES = [
