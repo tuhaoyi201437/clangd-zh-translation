@@ -704,8 +704,14 @@ def translate(text, code=None, depth=0):
         # 文本规则的 (.+?) 可能跨引号把后半句一起吞掉，例如
         #   "use of undeclared identifier 'foo' in 'main'"
         # 会被捕成 group(1)="foo' in 'main"，直接套模板会残留英文。
-        # 捕获组里出现成对的单引号即判定为过度捕获，让位给按码取值。
-        if any((g or '').count("'") >= 2 for g in m.groups()):
+        # 但捕获组整体若就是一个完整的引号包裹（如运算符 '^='），
+        # 成对单引号是合法内容 —— 不能当成过度捕获，否则
+        # "no viable overloaded '^=' / '+=' / '*='" 这类诊断会全部漏翻。
+        def _over_captured(g):
+            if not g or g.count("'") < 2:
+                return False
+            return not (g.startswith("'") and g.endswith("'") and g.count("'") == 2)
+        if any(_over_captured(g) for g in m.groups()):
             log('文本规则过度捕获，让位给诊断码：%s [%s]' % (base, code))
             continue
         rule_zh = _expand_checked(m, tpl, '文本', base)
