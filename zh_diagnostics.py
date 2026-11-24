@@ -445,6 +445,8 @@ EXTRA_RULES = [
      r"类模板 '\1' 的模板实参太少(需要补全模板参数)"),
     (r"Invalid '(.+?)' at end of declaration; did you mean '(.+?)'\?",
      r"声明末尾出现了无效的运算符 '\1'(是否想写 '\2'？)"),
+    ("Format string is empty", "格式串为空(printf/scanf 的格式串不能为空)"),
+    ("Expected ',' or ']' in lambda capture list", "Lambda 捕获列表中需要 ',' 或 ']'"),
 ]
 
 NOTE_RULES = [
@@ -618,6 +620,8 @@ NOTE_RULES = [
     ("Explicit constructor is not a candidate", "显式构造函数不是候选"),
     (r"substitution failure (\[with [^\]]*\]): no matching member function for call to '(.+?)'",
      r"模板替换失败\1：没有可用于调用 '\2' 的成员函数"),
+    (r"cannot convert initializer list argument to '(.+?)'",
+     r"无法把初始化列表实参转换为 '\1'"),
 ]
 
 

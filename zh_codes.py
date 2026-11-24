@@ -355,4 +355,6 @@ EXTRA_CODE_RULES = {
     "unexpected_semi": "')' 前出现了多余的分号 ';'",
     "template_arg_list_different_arity": "类模板 {1} 的模板实参个数不匹配",
     "invalid_token_after_declarator_suggest_equal": "声明末尾出现了无效的运算符 {1}(是否想写 {2}？)",
+    "-Wformat-zero-length": "格式串为空(printf/scanf 的格式串不能为空)",
+    "expected_comma_or_rsquare": "Lambda 捕获列表中需要 ',' 或 ']'",
 }
