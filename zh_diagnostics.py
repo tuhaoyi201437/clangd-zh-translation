@@ -451,6 +451,8 @@ EXTRA_RULES = [
      "空括号被解释为函数声明(最令人烦恼的解析，改用 '{}' 初始化)"),
     ("Variable length array folded to constant array as an extension",
      "变长数组被作为扩展折叠成常量数组(长度实际是编译期常量)"),
+    (r"Arithmetic on a pointer to the function type '(.+?)'",
+     r"不能对函数指针类型 '\1' 做算术运算(函数名后是否漏了 '()'？)"),
 ]
 
 NOTE_RULES = [
