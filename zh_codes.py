@@ -347,4 +347,6 @@ EXTRA_CODE_RULES = {
     "typename_requires_specqual": "类型名需要说明符或限定符(如 const / 命名空间限定)",
     "capture_does_not_name_variable": "捕获列表中的 {1} 不是变量名",
     "vla_decl_in_file_scope": "文件作用域不允许变长数组(VLA)声明(长度必须是常量表达式)",
+    "auto_not_allowed": "使用类模板 {1} 时必须写出模板参数(函数返回类型不允许推导模板实参)",
+    "-Wnon-pod-varargs": "不能把非平凡类型 {1} 的对象传给可变参数函数(格式字符串期望的是 {2})",
 }

@@ -431,6 +431,10 @@ EXTRA_RULES = [
     (r"'(.+?)' in capture list does not name a variable", r"捕获列表中的 '\1' 不是变量名"),
     ("Variable length array declaration not allowed at file scope",
      "文件作用域不允许变长数组(VLA)声明(长度必须是常量表达式)"),
+    (r"Use of class template '(.+?)' requires template arguments; argument deduction not allowed in function return type",
+     r"使用类模板 '\1' 时必须写出模板参数(函数返回类型不允许推导模板实参)"),
+    (r"Cannot pass non-trivial object of type '(.+?)' to variadic function; expected type from format string was '(.+?)'",
+     r"不能把非平凡类型 '\1' 的对象传给可变参数函数(格式字符串期望的是 '\2')"),
 ]
 
 NOTE_RULES = [
@@ -601,6 +605,9 @@ NOTE_RULES = [
     ("Lambda expression begins here", "Lambda 表达式从这里开始"),
     (r"Conversion candidate of type '(.+?)'", r"类型为 '\1' 的转换候选"),
     (r"Initializer of '(.+?)' is unknown", r"'\1' 的初始化值未知"),
+    ("Explicit constructor is not a candidate", "显式构造函数不是候选"),
+    (r"substitution failure (\[with [^\]]*\]): no matching member function for call to '(.+?)'",
+     r"模板替换失败\1：没有可用于调用 '\2' 的成员函数"),
 ]
 
 
