@@ -441,6 +441,10 @@ EXTRA_RULES = [
      r".* 右操作数的类型 '\1' 不是指向成员的指针"),
     (r"Extraneous '\)' after condition, expected a statement", "条件后有多余的 ')'，此处需要一条语句"),
     (r"Unexpected ';' before '\)'", "')' 前出现了多余的分号 ';'"),
+    (r"Too few template arguments for class template '(.+?)'",
+     r"类模板 '\1' 的模板实参太少(需要补全模板参数)"),
+    (r"Invalid '(.+?)' at end of declaration; did you mean '(.+?)'\?",
+     r"声明末尾出现了无效的运算符 '\1'(是否想写 '\2'？)"),
 ]
 
 NOTE_RULES = [

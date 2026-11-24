@@ -353,4 +353,6 @@ EXTRA_CODE_RULES = {
     "bad_memptr_rhs": ".* 右操作数的类型 {1} 不是指向成员的指针",
     "extraneous_rparen_in_condition": "条件后有多余的 ')'，此处需要一条语句",
     "unexpected_semi": "')' 前出现了多余的分号 ';'",
+    "template_arg_list_different_arity": "类模板 {1} 的模板实参个数不匹配",
+    "invalid_token_after_declarator_suggest_equal": "声明末尾出现了无效的运算符 {1}(是否想写 {2}？)",
 }
