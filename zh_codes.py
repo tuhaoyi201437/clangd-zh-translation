@@ -362,4 +362,8 @@ EXTRA_CODE_RULES = {
     "typecheck_pointer_arith_function_type": "不能对函数指针类型 {1} 做算术运算(函数名后是否漏了 '()'？)",
     "expected_qualified_after_typename": "'typename' 后需要限定名(应写成 'typename 命名空间::类型')",
     "expected_capture": "lambda 捕获列表中需要变量名或 'this'",
+    # ---- 2026-11-25 复核未翻译.py 剩余 3 组 ----
+    "l_square_l_square_not_attribute": "C++11 起只有写属性时才能连续使用两个左方括号 '['(属性写成 '[[属性名]]'，普通下标只能写一个 '[')",
+    "unexpected_unqualified_id": "类型-id 中不能出现名字(类型名后不能再跟标识符)",
+    "while_loop_outside_of_a_function": "'while' 循环只能写在函数体内",
 }

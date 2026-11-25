@@ -458,6 +458,11 @@ EXTRA_RULES = [
      "'typename' 后需要限定名(应写成 'typename 命名空间::类型')"),
     ("Expected variable name or 'this' in lambda capture list",
      "lambda 捕获列表中需要变量名或 'this'"),
+    # ---- 2026-11-25 复核未翻译.py 剩余 3 组(文本兜底) ----
+    (r"C\+\+11 only allows consecutive left square brackets when introducing an attribute",
+     "C++11 起只有写属性时才能连续使用两个左方括号 '['(属性写成 '[[属性名]]'，普通下标只能写一个 '[')"),
+    ("Type-id cannot have a name", "类型-id 中不能出现名字(类型名后不能再跟标识符)"),
+    ("While loop outside of a function", "'while' 循环只能写在函数体内"),
 ]
 
 NOTE_RULES = [
